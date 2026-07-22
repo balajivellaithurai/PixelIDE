@@ -1,7 +1,23 @@
+import { useRef } from "react";
 import useEditorStore from "../../store/editorStore";
+import useWorkspaceStore from "../../store/workspaceStore";
 
 const Navbar = () => {
   const { language, setLanguage, runCode, isLoading } = useEditorStore();
+  const { saveProject, importProject } = useWorkspaceStore();
+  const fileInputRef = useRef(null);
+
+  const handleOpenClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      importProject(file);
+      e.target.value = "";
+    }
+  };
 
   return (
     <header className="h-14 bg-[#1e1e1e] border-b border-gray-700 flex items-center justify-between px-5">
@@ -9,7 +25,37 @@ const Navbar = () => {
       <h1 className="text-xl font-bold text-purple-400">Pix</h1>
 
       {/* Controls */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Hidden File Input for Open Project */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept=".pixel,.json"
+          className="hidden"
+        />
+
+        {/* Open Project Button */}
+        <button
+          onClick={handleOpenClick}
+          className="px-3 py-1.5 rounded-md text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-600 transition-colors flex items-center gap-1.5 cursor-pointer"
+          title="Open .pixel project file"
+        >
+          <span>📂</span>
+          <span>Open</span>
+        </button>
+
+        {/* Save Project Button */}
+        <button
+          onClick={saveProject}
+          className="px-3 py-1.5 rounded-md text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-600 transition-colors flex items-center gap-1.5 cursor-pointer"
+          title="Save project as .pixel file"
+        >
+          <span>💾</span>
+          <span>Save</span>
+        </button>
+
+        {/* Language Selector */}
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
@@ -22,6 +68,7 @@ const Navbar = () => {
           <option value="java">Java</option>
         </select>
 
+        {/* Run Code Button */}
         <button
           onClick={runCode}
           disabled={isLoading}

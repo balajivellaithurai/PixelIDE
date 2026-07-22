@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import useEditorStore from "./editorStore";
+import { exportProjectFile, parseProjectFile } from "../services/projectService";
 
 const getLanguageFromFilename = (filename) => {
   const ext = filename.split(".").pop()?.toLowerCase();
@@ -151,6 +152,40 @@ const useWorkspaceStore = create((set, get) => ({
         activeFileId: nextActive,
       };
     }),
+
+  saveProject: () => {
+    const state = get();
+    exportProjectFile(state);
+  },
+
+  importProject: async (file) => {
+    try {
+      const projectData = await parseProjectFile(file);
+      set({
+        files: projectData.files,
+        openFiles: projectData.openFiles,
+        activeFileId: projectData.activeFileId,
+      });
+
+      if (projectData.activeFileId) {
+        const active = projectData.files.find(
+          (f) => f.id === projectData.activeFileId
+        );
+        if (active) {
+          useEditorStore.getState().setLanguage(active.language);
+          useEditorStore.getState().setCode(active.content || "");
+        }
+      } else if (projectData.files.length > 0) {
+        const first = projectData.files[0];
+        set({ activeFileId: first.id });
+        useEditorStore.getState().setLanguage(first.language);
+        useEditorStore.getState().setCode(first.content || "");
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to load project file");
+    }
+  },
 }));
 
 export default useWorkspaceStore;
