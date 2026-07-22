@@ -1,9 +1,15 @@
 import FileExplorer from "./FileExplorer";
 
 export default function Sidebar() {
-    return (
-        <aside className="w-64 bg-[#1e1e1e] border-r border-gray-800 flex flex-col p-4">
-            <FileExplorer />
-        </aside>
-    );
+  return (
+    <aside
+      style={{
+        backgroundColor: "var(--bg-sidebar)",
+        borderColor: "var(--border-color)",
+      }}
+      className="w-64 border-r flex flex-col p-4 transition-colors duration-200"
+    >
+      <FileExplorer />
+    </aside>
+  );
 }

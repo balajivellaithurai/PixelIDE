@@ -34,15 +34,19 @@ export default function FileExplorer() {
   };
 
   return (
-    <div className="h-full flex flex-col text-white">
+    <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+        <h2
+          style={{ color: "var(--text-muted)" }}
+          className="text-xs font-bold uppercase tracking-wider"
+        >
           Explorer
         </h2>
         <button
           onClick={() => setIsCreating(!isCreating)}
-          className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition"
+          style={{ color: "var(--text-muted)" }}
+          className="p-1 hover:text-white rounded transition cursor-pointer"
           title="New File"
         >
           <svg
@@ -72,11 +76,17 @@ export default function FileExplorer() {
             onKeyDown={(e) => {
               if (e.key === "Escape") setIsCreating(false);
             }}
-            className="flex-1 rounded bg-gray-800 px-2 py-1 text-xs outline-none border border-blue-500 text-white"
+            style={{
+              backgroundColor: "var(--bg-dropdown)",
+              color: "var(--text-main)",
+              borderColor: "var(--accent-color)",
+            }}
+            className="flex-1 rounded px-2 py-1 text-xs outline-none border"
           />
           <button
             type="submit"
-            className="bg-blue-600 px-2.5 py-1 text-xs rounded hover:bg-blue-700 text-white font-medium"
+            style={{ backgroundColor: "var(--accent-color)" }}
+            className="px-2.5 py-1 text-xs rounded text-white font-medium cursor-pointer hover:opacity-90"
           >
             +
           </button>
@@ -85,47 +95,57 @@ export default function FileExplorer() {
 
       {/* File List */}
       <div className="space-y-1 overflow-y-auto flex-1">
-        {files.map((file) => (
-          <div
-            key={file.id}
-            onClick={() => setActiveFile(file.id)}
-            className={`group flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer text-sm transition ${
-              activeFileId === file.id
-                ? "bg-blue-600/30 text-blue-400 font-medium border-l-2 border-blue-500"
-                : "text-gray-300 hover:bg-gray-800 hover:text-white"
-            }`}
-          >
-            <div className="flex items-center space-x-2 truncate">
-              <span className="text-xs">📄</span>
-              <span className="truncate">{file.name}</span>
-            </div>
+        {files.map((file) => {
+          const isActive = activeFileId === file.id;
+          return (
+            <div
+              key={file.id}
+              onClick={() => setActiveFile(file.id)}
+              style={
+                isActive
+                  ? {
+                      backgroundColor: "rgba(147, 51, 234, 0.15)",
+                      color: "var(--text-active)",
+                      borderLeft: "3px solid var(--accent-color)",
+                    }
+                  : { color: "var(--text-main)" }
+              }
+              className={`group flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer text-sm transition-colors ${
+                !isActive ? "hover:bg-[var(--bg-hover)]" : ""
+              }`}
+            >
+              <div className="flex items-center space-x-2 truncate">
+                <span className="text-xs">📄</span>
+                <span className="truncate">{file.name}</span>
+              </div>
 
-            {files.length > 1 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteFile(file.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400 rounded transition"
-                title="Delete file"
-              >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
+              {files.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteFile(file.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400 rounded transition"
+                  title="Delete file"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
-        ))}
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

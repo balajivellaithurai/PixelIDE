@@ -1,10 +1,12 @@
 import { useRef } from "react";
 import useEditorStore from "../../store/editorStore";
 import useWorkspaceStore from "../../store/workspaceStore";
+import useThemeStore, { THEMES } from "../../store/themeStore";
 
 const Navbar = () => {
   const { language, setLanguage, runCode, isLoading } = useEditorStore();
   const { saveProject, importProject } = useWorkspaceStore();
+  const { theme, setTheme } = useThemeStore();
   const fileInputRef = useRef(null);
 
   const handleOpenClick = () => {
@@ -20,7 +22,13 @@ const Navbar = () => {
   };
 
   return (
-    <header className="h-14 bg-[#1e1e1e] border-b border-gray-700 flex items-center justify-between px-5">
+    <header
+      style={{
+        backgroundColor: "var(--bg-navbar)",
+        borderColor: "var(--border-color)",
+      }}
+      className="h-14 border-b flex items-center justify-between px-5 transition-colors duration-200"
+    >
       {/* Logo */}
       <h1 className="text-xl font-bold text-purple-400">Pix</h1>
 
@@ -38,7 +46,12 @@ const Navbar = () => {
         {/* Open Project Button */}
         <button
           onClick={handleOpenClick}
-          className="px-3 py-1.5 rounded-md text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-600 transition-colors flex items-center gap-1.5 cursor-pointer"
+          style={{
+            backgroundColor: "var(--bg-dropdown)",
+            color: "var(--text-main)",
+            borderColor: "var(--border-color)",
+          }}
+          className="px-3 py-1.5 rounded-md text-sm font-medium border transition-colors flex items-center gap-1.5 cursor-pointer hover:opacity-80"
           title="Open .pixel project file"
         >
           <span>📂</span>
@@ -48,18 +61,47 @@ const Navbar = () => {
         {/* Save Project Button */}
         <button
           onClick={saveProject}
-          className="px-3 py-1.5 rounded-md text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-600 transition-colors flex items-center gap-1.5 cursor-pointer"
+          style={{
+            backgroundColor: "var(--bg-dropdown)",
+            color: "var(--text-main)",
+            borderColor: "var(--border-color)",
+          }}
+          className="px-3 py-1.5 rounded-md text-sm font-medium border transition-colors flex items-center gap-1.5 cursor-pointer hover:opacity-80"
           title="Save project as .pixel file"
         >
           <span>💾</span>
           <span>Save</span>
         </button>
 
+        {/* Theme Selector */}
+        <select
+          value={theme}
+          onChange={(e) => setTheme(e.target.value)}
+          style={{
+            backgroundColor: "var(--bg-dropdown)",
+            color: "var(--text-main)",
+            borderColor: "var(--border-color)",
+          }}
+          className="px-3 py-1.5 rounded-md outline-none border text-sm cursor-pointer transition-colors"
+          title="Select IDE Theme"
+        >
+          {THEMES.map((t) => (
+            <option key={t.id} value={t.id}>
+              🎨 {t.name}
+            </option>
+          ))}
+        </select>
+
         {/* Language Selector */}
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="bg-[#2d2d2d] text-white px-3 py-1.5 rounded-md outline-none border border-gray-600 text-sm cursor-pointer hover:border-purple-500 transition-colors"
+          style={{
+            backgroundColor: "var(--bg-dropdown)",
+            color: "var(--text-main)",
+            borderColor: "var(--border-color)",
+          }}
+          className="px-3 py-1.5 rounded-md outline-none border text-sm cursor-pointer transition-colors"
         >
           <option value="javascript">JavaScript</option>
           <option value="python">Python</option>

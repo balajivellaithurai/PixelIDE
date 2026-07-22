@@ -2,10 +2,13 @@ import { useRef, useEffect } from "react";
 import Editor from "@monaco-editor/react";
 import useEditorStore from "../../store/editorStore";
 import useWorkspaceStore from "../../store/workspaceStore";
+import useThemeStore from "../../store/themeStore";
+import { applyMonacoTheme } from "../../utils/themeRegistry";
 
 const EditorPanel = () => {
   const { code, language, setCode } = useEditorStore();
   const { activeFileId, updateFileContent } = useWorkspaceStore();
+  const { theme } = useThemeStore();
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
 
@@ -13,11 +16,12 @@ const EditorPanel = () => {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    // Verify initial model language on mount
+    applyMonacoTheme(monaco, theme);
+
     const model = editor.getModel();
     if (model) {
       console.log(
-        `[Monaco Initialized] Model Language ID: "${model.getLanguageId()}" | Zustand Language: "${language}"`
+        `[Monaco Initialized] Model Language: "${model.getLanguageId()}" | Theme: "${theme}"`
       );
     }
   };
@@ -28,12 +32,16 @@ const EditorPanel = () => {
       const model = editorRef.current.getModel();
       if (model) {
         monacoRef.current.editor.setModelLanguage(model, language);
-        console.log(
-          `[Monaco Language Update] Model Language ID: "${model.getLanguageId()}" | Zustand Language: "${language}"`
-        );
       }
     }
   }, [language]);
+
+  // Dynamically switch Monaco theme when theme state changes
+  useEffect(() => {
+    if (monacoRef.current) {
+      applyMonacoTheme(monacoRef.current, theme);
+    }
+  }, [theme]);
 
   const handleChange = (val) => {
     const newCode = val || "";
@@ -44,14 +52,17 @@ const EditorPanel = () => {
   };
 
   return (
-    <div className="flex-1 min-h-0 h-full bg-[#1e1e1e]">
+    <div
+      style={{ backgroundColor: "var(--bg-editor)" }}
+      className="flex-1 min-h-0 h-full transition-colors duration-200"
+    >
       <Editor
         height="100%"
         language={language}
         value={code}
         onChange={handleChange}
         onMount={handleEditorDidMount}
-        theme="vs-dark"
+        theme={theme}
         options={{
           fontSize: 14,
           minimap: { enabled: false },

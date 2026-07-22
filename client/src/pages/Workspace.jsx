@@ -6,7 +6,10 @@ import Console from "../components/layout/Console";
 
 const Workspace = () => {
   return (
-    <div className="h-screen flex flex-col bg-[#111827]">
+    <div
+      style={{ backgroundColor: "var(--bg-app)" }}
+      className="h-screen flex flex-col transition-colors duration-200"
+    >
       <Navbar />
 
       <div className="flex flex-1 overflow-hidden">
