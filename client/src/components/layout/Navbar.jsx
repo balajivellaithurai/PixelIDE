@@ -36,6 +36,7 @@ const Navbar = () => {
       <div className="flex items-center gap-3">
         {/* Hidden File Input for Open Project */}
         <input
+          id="pixelide-open-file-input"
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
@@ -52,7 +53,7 @@ const Navbar = () => {
             borderColor: "var(--border-color)",
           }}
           className="px-3 py-1.5 rounded-md text-sm font-medium border transition-colors flex items-center gap-1.5 cursor-pointer hover:opacity-80"
-          title="Open .pixel project file"
+          title="Open .pixel project file (Ctrl+O)"
         >
           <span>📂</span>
           <span>Open</span>
@@ -67,7 +68,7 @@ const Navbar = () => {
             borderColor: "var(--border-color)",
           }}
           className="px-3 py-1.5 rounded-md text-sm font-medium border transition-colors flex items-center gap-1.5 cursor-pointer hover:opacity-80"
-          title="Save project as .pixel file"
+          title="Save project as .pixel file (Ctrl+S)"
         >
           <span>💾</span>
           <span>Save</span>
@@ -119,6 +120,7 @@ const Navbar = () => {
               ? "bg-purple-800 text-purple-200 cursor-not-allowed opacity-75"
               : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/20"
           }`}
+          title="Run Code (Ctrl+Enter)"
         >
           {isLoading ? (
             <>

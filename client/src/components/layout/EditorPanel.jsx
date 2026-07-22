@@ -4,6 +4,7 @@ import useEditorStore from "../../store/editorStore";
 import useWorkspaceStore from "../../store/workspaceStore";
 import useThemeStore from "../../store/themeStore";
 import { applyMonacoTheme } from "../../utils/themeRegistry";
+import { handleGlobalShortcut } from "../../hooks/useKeyboardShortcuts";
 
 const EditorPanel = () => {
   const { code, language, setCode } = useEditorStore();
@@ -17,6 +18,15 @@ const EditorPanel = () => {
     monacoRef.current = monaco;
 
     applyMonacoTheme(monaco, theme);
+
+    // Bind Monaco editor keydown bridge to trigger global IDE shortcuts
+    editor.onKeyDown((e) => {
+      const handled = handleGlobalShortcut(e.browserEvent);
+      if (handled) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
 
     const model = editor.getModel();
     if (model) {

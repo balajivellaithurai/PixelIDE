@@ -3,8 +3,12 @@ import FileTabs from "../components/layout/FileTabs";
 import Sidebar from "../components/layout/Sidebar";
 import EditorPanel from "../components/layout/EditorPanel";
 import Console from "../components/layout/Console";
+import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 
 const Workspace = () => {
+  // Activate global keyboard shortcut system
+  useKeyboardShortcuts();
+
   return (
     <div
       style={{ backgroundColor: "var(--bg-app)" }}
