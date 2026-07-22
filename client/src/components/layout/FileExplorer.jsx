@@ -1,121 +1,103 @@
-import { useState } from "react";
 import useWorkspaceStore from "../../store/workspaceStore";
 
 export default function FileExplorer() {
-  const { files, activeFileId, setActiveFile, addFile, deleteFile } =
-    useWorkspaceStore();
-  const [isCreating, setIsCreating] = useState(false);
-  const [newFileName, setNewFileName] = useState("");
+    const { files, activeFileId, setActiveFile } = useWorkspaceStore();
 
-  const handleCreateFile = (e) => {
-    e.preventDefault();
-    if (newFileName.trim()) {
-      addFile(newFileName.trim());
-      setNewFileName("");
-      setIsCreating(false);
-    }
+    return (
+        <div className="w-60 bg-[#1e1e1e] border-r border-gray-700 h-full p-3">
+            <h2 className="text-white text-lg font-semibold mb-4">
+                Explorer
+            </h2>
+
+            <div className="space-y-1">
+                {files.map((file) => (import {useState} from "react";
+                import useWorkspaceStore from "../../store/workspaceStore";
+
+                export default function FileExplorer() {
+  const {
+                    files,
+                    activeFileId,
+                    setActiveFile,
+                    createFile,
+  } = useWorkspaceStore();
+
+                const [fileName, setFileName] = useState("");
+
+  const handleCreate = () => {
+    if (!fileName.trim()) return;
+
+                const extension = fileName.split(".").pop();
+
+                const languageMap = {
+                    js: "javascript",
+                py: "python",
+                java: "java",
+                cpp: "cpp",
+                c: "c",
+                html: "html",
+                css: "css",
+    };
+
+                createFile(
+                fileName,
+                languageMap[extension] || "plaintext"
+                );
+
+                setFileName("");
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Escape") {
-      setIsCreating(false);
-      setNewFileName("");
-    }
-  };
+                return (
+                <div className="h-full p-3 text-white">
 
-  return (
-    <div className="w-full h-full flex flex-col">
-      {/* Header with Explorer title and + New File button */}
-      <div className="flex items-center justify-between mb-3 px-1">
-        <h2 className="text-gray-300 text-xs font-bold uppercase tracking-wider">
-          Explorer
-        </h2>
-        <button
-          onClick={() => setIsCreating(true)}
-          className="p-1 text-gray-400 hover:text-white hover:bg-gray-700/60 rounded transition flex items-center justify-center"
-          title="New File"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-        </button>
-      </div>
+                    <h2 className="text-lg font-bold mb-4">
+                        Explorer
+                    </h2>
 
-      {/* New File Inline Input */}
-      {isCreating && (
-        <form onSubmit={handleCreateFile} className="mb-2 px-1">
-          <input
-            type="text"
-            autoFocus
-            value={newFileName}
-            onChange={(e) => setNewFileName(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={() => {
-              if (!newFileName.trim()) setIsCreating(false);
-            }}
-            placeholder="filename.js..."
-            className="w-full bg-[#2a2a2a] text-white text-xs px-2 py-1 rounded border border-blue-500 focus:outline-none"
-          />
-        </form>
-      )}
+                    <div className="flex gap-2 mb-4">
+                        <input
+                            value={fileName}
+                            onChange={(e) => setFileName(e.target.value)}
+                            placeholder="main.py"
+                            className="flex-1 rounded bg-gray-800 px-2 py-1 outline-none"
+                        />
 
-      {/* File List */}
-      <div className="space-y-1 overflow-y-auto flex-1">
-        {files.map((file) => {
-          const isActive = activeFileId === file.id;
-          return (
-            <div
-              key={file.id}
-              onClick={() => setActiveFile(file.id)}
-              className={`group flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-sm transition ${
-                isActive
-                  ? "bg-blue-600/30 text-blue-400 font-medium border-l-2 border-blue-500"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
-              }`}
-            >
-              <div className="flex items-center space-x-2 truncate">
-                <span className="text-xs">📄</span>
-                <span className="truncate">{file.name}</span>
-              </div>
+                        <button
+                            onClick={handleCreate}
+                            className="bg-blue-600 px-3 rounded hover:bg-blue-700"
+                        >
+                            +
+                        </button>
+                    </div>
 
-              {files.length > 1 && (
+                    <div className="space-y-1">
+                        {files.map((file) => (
+                            <button
+                                key={file.id}
+                                onClick={() => setActiveFile(file.id)}
+                                className={`w-full text-left px-2 py-2 rounded ${activeFileId === file.id
+                                    ? "bg-blue-600"
+                                    : "hover:bg-gray-700"
+                                    }`}
+                            >
+                                📄 {file.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                );
+}
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteFile(file.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400 rounded transition"
-                  title="Delete File"
+                    key={file.id}
+                    onClick={() => setActiveFile(file.id)}
+                    className={`w-full text-left px-3 py-2 rounded transition ${activeFileId === file.id
+                        ? "bg-blue-600 text-white"
+                        : "text-gray-300 hover:bg-gray-700"
+                        }`}
                 >
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                    📄 {file.name}
                 </button>
-              )}
+                ))}
             </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+        </div>
+    );
 }
