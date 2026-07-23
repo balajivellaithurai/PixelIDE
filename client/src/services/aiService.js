@@ -1,155 +1,222 @@
 /**
- * PixelIDE Public AI Service Facade
- * Provides high-level asynchronous methods for all AI features.
- * Connects prompt generators, Zustand AI store, and AI providers.
- * Components NEVER call Gemini or external AI APIs directly.
+ * PixelIDE Public AI Service Facade (Sprint 8 - UI Mock Implementation)
+ * Provides simulated high-level asynchronous methods for all AI features.
+ * Features a ~2000ms artificial delay to test loading skeletons, response views, and Zustand store updates.
  */
 
 import useAIStore, { AIActionType } from "../store/aiStore";
-import providerFactory from "../ai/providers/AIProviderFactory";
-import aiConfigManager from "../ai/config/aiConfig";
 import { AIError, AIErrorType } from "../ai/errors/aiErrors";
-import {
-  reviewPrompt,
-  debugPrompt,
-  explainPrompt,
-  optimizePrompt,
-  testsPrompt,
-  documentationPrompt,
-  interviewPrompt,
-} from "../ai/prompts/promptTemplates";
+
+const MOCK_RESPONSES = {
+  [AIActionType.REVIEW]: `### Code Review Summary
+
+Your code is readable and modularly designed. A few key optimizations and safety improvements are recommended below.
+
+#### Key Recommendations:
+• **Variable Naming**: Rename ambiguous or single-letter variables (e.g. \`x\`) to clear, descriptive terms.
+• **Helper Extraction**: Extract repeated calculation logic into pure, reusable helper functions.
+• **Error Handling**: Wrap potential runtime execution points in robust \`try...catch\` blocks.
+
+#### Suggested Refactored Code:
+\`\`\`javascript
+// Improved message logging function with defensive error handling
+function displayWelcomeMessage(user = "Guest") {
+  try {
+    const greeting = \`Hello, \${user}! Welcome to PixelIDE.\`;
+    console.log(greeting);
+    return greeting;
+  } catch (error) {
+    console.error("Failed to display greeting:", error);
+    return null;
+  }
+}
+
+displayWelcomeMessage("Developer");
+\`\`\``,
+
+  [AIActionType.DEBUG]: `### Bug Diagnostic Analysis
+
+**Root Cause**: Potential \`TypeError: Cannot read properties of undefined\` detected in property dereferencing.
+
+#### Diagnostic Details:
+• Attempted to access properties before validating object existence.
+• Asynchronous value evaluation may return \`undefined\` before state resolves.
+
+#### Recommended Fix:
+\`\`\`javascript
+// Safe optional chaining with nullish coalescing fallback
+const userProfile = data?.user ?? { name: "Guest Developer", role: "Contributor" };
+
+console.log(\`Active User: \${userProfile.name} (\${userProfile.role})\`);
+\`\`\``,
+
+  [AIActionType.EXPLAIN]: `### Code Explanation
+
+#### Overview:
+This function processes incoming application parameters, validates input boundaries, and transforms raw values into structured output.
+
+#### Step-by-Step Breakdown:
+1. **Input Guarding**: Validates that required arguments are present before execution.
+2. **Data Transformation**: Converts raw entries into standardized objects using array operations.
+3. **Output Return**: Emits clean formatted data for downstream UI component consumption.`,
+
+  [AIActionType.OPTIMIZE]: `### Performance Optimization Report
+
+**Original Time Complexity**: $O(n^2)$  
+**Optimized Time Complexity**: $O(n)$
+
+#### Key Optimization Highlights:
+• Replaced nested loop scanning with a hash map lookup for $O(1)$ key access.
+• Reduced redundant heap memory allocations inside tight loop iterations.
+
+#### Optimized Snippet:
+\`\`\`javascript
+// High-performance hash lookup implementation
+const lookupMap = new Map();
+
+for (const item of items) {
+  lookupMap.set(item.id, item);
+}
+
+const result = searchIds.map(id => lookupMap.get(id)).filter(Boolean);
+\`\`\``,
+
+  [AIActionType.TESTS]: `### Unit Test Suite
+
+Generated comprehensive unit test cases covering happy paths, edge cases, and error boundaries.
+
+\`\`\`javascript
+import { describe, it, expect } from "vitest";
+
+describe("Core Logic Suite", () => {
+  it("should process valid input correctly", () => {
+    const result = processData({ id: 1, name: "PixelIDE" });
+    expect(result).toBeDefined();
+    expect(result.status).toBe("success");
+  });
+
+  it("should handle empty or null input gracefully", () => {
+    const result = processData(null);
+    expect(result).toHaveProperty("error");
+    expect(result.error).toBe(true);
+  });
+});
+\`\`\``,
+
+  [AIActionType.DOCS]: `### Technical Documentation
+
+#### Module Overview
+Utility module for managing application state, configuration options, and terminal output formatting.
+
+\`\`\`javascript
+/**
+ * Processes user workspace input and returns structured configuration payload.
+ *
+ * @param {Object} inputData - Raw workspace payload
+ * @param {string} inputData.id - Unique workspace identifier
+ * @param {boolean} [inputData.active=true] - Active flag status
+ * @returns {Object} Structured configuration response payload
+ */
+function configureWorkspace(inputData) {
+  // Implementation details...
+}
+\`\`\``,
+
+  [AIActionType.INTERVIEW]: `### Technical Interview Feedback
+
+**Approach Evaluation**:
+• Good initial problem understanding and clean structure.
+• **Time Complexity**: $O(n \\log n)$ due to sorting.
+
+#### Interviewer Hint:
+*Can you optimize this algorithm to run in $O(n)$ time by utilizing a Frequency Hash Map instead of sorting?*`,
+};
 
 class AIService {
   /**
-   * Internal helper to execute AI operations across providers, store, and prompts.
+   * Internal helper to simulate async AI operations with ~2000ms delay for Sprint 8 UI testing.
    */
-  async _executeAction(actionType, promptData, meta = {}) {
+  async _executeAction(actionType, meta = {}) {
     const { startAction, setResponse, setError } = useAIStore.getState();
     const { requestId, signal } = startAction(actionType);
 
-    try {
-      const provider = providerFactory.getProvider();
-      const config = aiConfigManager.getConfig();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        if (signal?.aborted) {
+          const cancelError = new AIError(AIErrorType.CANCELLED);
+          setError(requestId, cancelError);
+          reject(cancelError);
+          return;
+        }
 
-      const responseText = await provider.generateContent({
-        prompt: promptData.prompt,
-        systemInstruction: promptData.systemInstruction,
-        config,
-        signal,
-      });
+        const mockResponse =
+          MOCK_RESPONSES[actionType] ||
+          "### AI Analysis Complete\n\nExecuted action successfully.";
 
-      setResponse(requestId, responseText, {
-        language: meta.language || "javascript",
-        actionType,
-        ...meta,
-      });
+        setResponse(requestId, mockResponse, {
+          language: meta.language || "javascript",
+          actionType,
+          ...meta,
+        });
 
-      return responseText;
-    } catch (err) {
-      const aiError =
-        err instanceof AIError
-          ? err
-          : new AIError(AIErrorType.UNKNOWN_ERROR, err.message, err);
+        resolve(mockResponse);
+      }, 2000);
 
-      setError(requestId, aiError);
-      throw aiError;
-    }
+      if (signal) {
+        signal.addEventListener("abort", () => {
+          clearTimeout(timer);
+          const cancelError = new AIError(AIErrorType.CANCELLED);
+          setError(requestId, cancelError);
+          reject(cancelError);
+        });
+      }
+    });
   }
 
   /**
-   * Performs AI Code Review.
-   * @param {string} code - Source code to review
-   * @param {string} [language='javascript'] - Programming language
-   * @returns {Promise<string>} Review feedback
+   * AI Code Review (Mock)
    */
   async reviewCode(code, language = "javascript") {
-    if (!code || !code.trim()) {
-      throw new AIError(AIErrorType.EMPTY_REQUEST, "Source code cannot be empty for review.");
-    }
-    const promptData = reviewPrompt({ code, language });
-    return this._executeAction(AIActionType.REVIEW, promptData, { language });
+    return this._executeAction(AIActionType.REVIEW, { code, language });
   }
 
   /**
-   * Performs AI Error Debugging.
-   * @param {string} code - Source code
-   * @param {string} [language='javascript'] - Programming language
-   * @param {string} [errorOutput=''] - Console or compiler error text
-   * @returns {Promise<string>} Debug analysis & fix
+   * AI Error Debugging (Mock)
    */
   async debugError(code, language = "javascript", errorOutput = "") {
-    if (!code || !code.trim()) {
-      throw new AIError(AIErrorType.EMPTY_REQUEST, "Source code cannot be empty for debugging.");
-    }
-    const promptData = debugPrompt({ code, language, errorOutput });
-    return this._executeAction(AIActionType.DEBUG, promptData, { language, errorOutput });
+    return this._executeAction(AIActionType.DEBUG, { code, language, errorOutput });
   }
 
   /**
-   * Explains full file code or highlighted text selection.
-   * @param {string} code - Source code
-   * @param {string} [language='javascript'] - Programming language
-   * @param {string} [selectedText=''] - Highlighted selection snippet
-   * @returns {Promise<string>} Step-by-step code explanation
+   * AI Explain Selection (Mock)
    */
   async explainSelection(code, language = "javascript", selectedText = "") {
-    const target = selectedText && selectedText.trim() ? selectedText : code;
-    if (!target || !target.trim()) {
-      throw new AIError(AIErrorType.EMPTY_REQUEST, "No code provided to explain.");
-    }
-    const promptData = explainPrompt({ code, language, selectedText });
-    return this._executeAction(AIActionType.EXPLAIN, promptData, { language, selectedText });
+    return this._executeAction(AIActionType.EXPLAIN, { code, language, selectedText });
   }
 
   /**
-   * Optimizes code for time/space performance.
-   * @param {string} code - Source code
-   * @param {string} [language='javascript'] - Programming language
-   * @returns {Promise<string>} Optimized code and analysis
+   * AI Optimize Code (Mock)
    */
   async optimizeCode(code, language = "javascript") {
-    if (!code || !code.trim()) {
-      throw new AIError(AIErrorType.EMPTY_REQUEST, "Source code cannot be empty for optimization.");
-    }
-    const promptData = optimizePrompt({ code, language });
-    return this._executeAction(AIActionType.OPTIMIZE, promptData, { language });
+    return this._executeAction(AIActionType.OPTIMIZE, { code, language });
   }
 
   /**
-   * Generates unit tests for code.
-   * @param {string} code - Source code
-   * @param {string} [language='javascript'] - Programming language
-   * @returns {Promise<string>} Unit test suite code
+   * AI Generate Tests (Mock)
    */
   async generateTests(code, language = "javascript") {
-    if (!code || !code.trim()) {
-      throw new AIError(AIErrorType.EMPTY_REQUEST, "Source code cannot be empty for test generation.");
-    }
-    const promptData = testsPrompt({ code, language });
-    return this._executeAction(AIActionType.TESTS, promptData, { language });
+    return this._executeAction(AIActionType.TESTS, { code, language });
   }
 
   /**
-   * Generates technical documentation & docstrings.
-   * @param {string} code - Source code
-   * @param {string} [language='javascript'] - Programming language
-   * @returns {Promise<string>} Documentation markdown
+   * AI Generate Docs (Mock)
    */
   async generateDocs(code, language = "javascript") {
-    if (!code || !code.trim()) {
-      throw new AIError(AIErrorType.EMPTY_REQUEST, "Source code cannot be empty for doc generation.");
-    }
-    const promptData = documentationPrompt({ code, language });
-    return this._executeAction(AIActionType.DOCS, promptData, { language });
+    return this._executeAction(AIActionType.DOCS, { code, language });
   }
 
   /**
-   * Evaluates code for Interview Mode.
-   * @param {string} code - Solution code
-   * @param {string} [language='javascript'] - Programming language
-   * @param {string} [problemStatement='Coding Challenge'] - Problem description
-   * @param {string} [userQuestion=''] - Candidate message
-   * @returns {Promise<string>} Interviewer feedback & hint
+   * AI Interview Feedback (Mock)
    */
   async interviewFeedback(
     code,
@@ -157,13 +224,8 @@ class AIService {
     problemStatement = "Coding Challenge",
     userQuestion = ""
   ) {
-    const promptData = interviewPrompt({
+    return this._executeAction(AIActionType.INTERVIEW, {
       code,
-      language,
-      problemStatement,
-      userQuestion,
-    });
-    return this._executeAction(AIActionType.INTERVIEW, promptData, {
       language,
       problemStatement,
       userQuestion,

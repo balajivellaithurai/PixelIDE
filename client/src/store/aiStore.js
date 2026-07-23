@@ -1,7 +1,7 @@
 /**
  * Dedicated Zustand Store for PixelIDE AI Foundation Infrastructure
  * Manages loading states, active actions, responses, error payloads, request cancellation,
- * provider configuration, and response history.
+ * provider configuration, response history, and AI sidebar UI visibility.
  */
 
 import { create } from "zustand";
@@ -23,6 +23,11 @@ export const AIActionType = {
 const activeAbortControllers = new Map();
 
 const useAIStore = create((set, get) => ({
+  // UI Sidebar State
+  isOpen: false,
+  selectedAction: null,
+
+  // Execution & Foundation State
   isLoading: false,
   isStreaming: false,
   currentAction: null,
@@ -33,6 +38,13 @@ const useAIStore = create((set, get) => ({
   model: aiConfigManager.getModel(),
   temperature: aiConfigManager.getTemperature(),
   apiKey: aiConfigManager.getApiKey(),
+
+  // UI Actions
+  openSidebar: () => set({ isOpen: true }),
+  closeSidebar: () => set({ isOpen: false }),
+  toggleSidebar: () => set((state) => ({ isOpen: !state.isOpen })),
+  selectAction: (action) => set({ selectedAction: action }),
+  setLoading: (isLoading) => set({ isLoading }),
 
   /**
    * Initializes action execution state and returns an AbortSignal for the request.
@@ -48,6 +60,7 @@ const useAIStore = create((set, get) => ({
     set({
       isLoading: true,
       currentAction: actionType,
+      selectedAction: actionType,
       response: null,
       error: null,
     });
@@ -142,7 +155,8 @@ const useAIStore = create((set, get) => ({
   /**
    * Resets response and error.
    */
-  clearResponse: () => set({ response: null, error: null, currentAction: null }),
+  clearResponse: () =>
+    set({ response: null, error: null, currentAction: null, selectedAction: null }),
 
   /**
    * Clears request history.
