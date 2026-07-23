@@ -1,6 +1,7 @@
 /**
  * PixelIDE Gemini AI Provider Implementation
- * Integrates directly with Google Gemini REST API using fetch with AbortSignal & Timeout support.
+ * Integrates directly with Google Gemini REST API using fetch with AbortSignal & Timeout support,
+ * with fallback to local Express server proxy (http://localhost:5000/api/ai/generate).
  */
 
 import BaseAIProvider from "./BaseAIProvider";
@@ -10,10 +11,11 @@ export class GeminiProvider extends BaseAIProvider {
   constructor() {
     super("gemini");
     this.baseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
+    this.serverProxyUrl = "http://localhost:5000/api/ai/generate";
   }
 
   /**
-   * Generates content via Gemini REST API.
+   * Generates content via Gemini REST API or Express server proxy.
    *
    * @param {Object} params
    * @param {string} params.prompt - User or assembled prompt text
@@ -27,27 +29,82 @@ export class GeminiProvider extends BaseAIProvider {
       throw new AIError(AIErrorType.EMPTY_REQUEST, "Prompt content cannot be empty.");
     }
 
-    const apiKey = config.apiKey;
-    if (!apiKey) {
-      throw new AIError(
-        AIErrorType.MISSING_API_KEY,
-        "VITE_GEMINI_API_KEY is not configured."
-      );
-    }
+    const rawKey = config.apiKey || "";
+    const apiKey = String(rawKey).replace(/^["']|["']$/g, "").trim();
 
     const model = config.model || "gemini-1.5-flash";
     const temperature = config.temperature !== undefined ? config.temperature : 0.7;
     const maxOutputTokens = config.maxTokens || 4096;
     const timeoutMs = config.timeoutMs || 30000;
 
+    // 1. Try Direct Gemini REST API request if apiKey exists
+    if (apiKey) {
+      try {
+        return await this._callDirectGemini({
+          prompt,
+          systemInstruction,
+          apiKey,
+          model,
+          temperature,
+          maxOutputTokens,
+          timeoutMs,
+          signal,
+        });
+      } catch (err) {
+        // If cancellation or invalid key, throw immediately
+        if (
+          err.type === AIErrorType.CANCELLED ||
+          err.type === AIErrorType.INVALID_API_KEY
+        ) {
+          throw err;
+        }
+        // Fallthrough to server proxy attempt
+      }
+    }
+
+    // 2. Fallback to Express Proxy (http://localhost:5000/api/ai/generate)
+    try {
+      return await this._callServerProxy({
+        prompt,
+        systemInstruction,
+        apiKey,
+        model,
+        temperature,
+        maxOutputTokens,
+        timeoutMs,
+        signal,
+      });
+    } catch (proxyErr) {
+      if (proxyErr instanceof AIError) throw proxyErr;
+
+      if (!apiKey) {
+        throw new AIError(
+          AIErrorType.MISSING_API_KEY,
+          "VITE_GEMINI_API_KEY is missing. Please set your API Key in .env or configure server process.env.GEMINI_API_KEY."
+        );
+      }
+
+      throw proxyErr;
+    }
+  }
+
+  /**
+   * Internal direct call to Google Gemini REST API.
+   */
+  async _callDirectGemini({
+    prompt,
+    systemInstruction,
+    apiKey,
+    model,
+    temperature,
+    maxOutputTokens,
+    timeoutMs,
+    signal,
+  }) {
     const endpoint = `${this.baseUrl}/${model}:generateContent?key=${apiKey}`;
 
     const requestBody = {
-      contents: [
-        {
-          parts: [{ text: prompt }],
-        },
-      ],
+      contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         temperature,
         maxOutputTokens,
@@ -60,7 +117,6 @@ export class GeminiProvider extends BaseAIProvider {
       };
     }
 
-    // Set up timeout controller combined with caller's signal
     const timeoutController = new AbortController();
     const timer = setTimeout(() => {
       timeoutController.abort(new Error("Timeout"));
@@ -78,25 +134,19 @@ export class GeminiProvider extends BaseAIProvider {
     try {
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
         signal: timeoutController.signal,
       });
 
       clearTimeout(timer);
-      if (signal) {
-        signal.removeEventListener("abort", onAbort);
-      }
+      if (signal) signal.removeEventListener("abort", onAbort);
 
       if (!response.ok) {
         let errorData = null;
         try {
           errorData = await response.json();
-        } catch (_) {
-          // Ignore JSON parse failure on non-200 error response
-        }
+        } catch (_) {}
 
         const statusCode = response.status;
         const statusMessage = errorData?.error?.message || response.statusText;
@@ -117,33 +167,22 @@ export class GeminiProvider extends BaseAIProvider {
       }
 
       const data = await response.json();
-
-      // Extract generated text content safely
       const candidate = data.candidates?.[0];
       const parts = candidate?.content?.parts;
+
       if (!parts || !parts.length || !parts[0].text) {
-        if (candidate?.finishReason && candidate.finishReason !== "STOP") {
-          throw new AIError(
-            AIErrorType.MALFORMED_RESPONSE,
-            `Gemini API generation finished with reason: ${candidate.finishReason}`
-          );
-        }
         throw new AIError(
           AIErrorType.MALFORMED_RESPONSE,
-          "Gemini API returned an empty or unparseable candidates payload."
+          "Gemini API returned an empty text payload."
         );
       }
 
       return parts[0].text.trim();
     } catch (err) {
       clearTimeout(timer);
-      if (signal) {
-        signal.removeEventListener("abort", onAbort);
-      }
+      if (signal) signal.removeEventListener("abort", onAbort);
 
-      if (err instanceof AIError) {
-        throw err;
-      }
+      if (err instanceof AIError) throw err;
 
       if (err.name === "AbortError" || signal?.aborted) {
         if (timeoutController.signal.reason?.message === "Timeout") {
@@ -152,11 +191,94 @@ export class GeminiProvider extends BaseAIProvider {
         throw new AIError(AIErrorType.CANCELLED);
       }
 
-      if (err.message === "Failed to fetch" || err.name === "TypeError") {
-        throw new AIError(AIErrorType.NETWORK_ERROR, err.message, err);
+      throw new AIError(AIErrorType.NETWORK_ERROR, err.message, err);
+    }
+  }
+
+  /**
+   * Internal call to local Express server proxy (/api/ai/generate).
+   */
+  async _callServerProxy({
+    prompt,
+    systemInstruction,
+    apiKey,
+    model,
+    temperature,
+    maxOutputTokens,
+    timeoutMs,
+    signal,
+  }) {
+    const timeoutController = new AbortController();
+    const timer = setTimeout(() => {
+      timeoutController.abort(new Error("Timeout"));
+    }, timeoutMs);
+
+    const onAbort = () => timeoutController.abort(new Error("Cancelled"));
+    if (signal) {
+      if (signal.aborted) {
+        clearTimeout(timer);
+        throw new AIError(AIErrorType.CANCELLED);
+      }
+      signal.addEventListener("abort", onAbort);
+    }
+
+    try {
+      const response = await fetch(this.serverProxyUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiKey ? { "x-gemini-api-key": apiKey } : {}),
+        },
+        body: JSON.stringify({
+          prompt,
+          systemInstruction,
+          model,
+          temperature,
+          maxTokens: maxOutputTokens,
+        }),
+        signal: timeoutController.signal,
+      });
+
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener("abort", onAbort);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new AIError(
+            AIErrorType.INVALID_API_KEY,
+            data.details || data.error || "Invalid API key provided."
+          );
+        }
+        throw new AIError(
+          AIErrorType.PROVIDER_ERROR,
+          data.details || data.error || "Server proxy AI execution failed."
+        );
       }
 
-      throw new AIError(AIErrorType.UNKNOWN_ERROR, err.message, err);
+      if (!data.text) {
+        throw new AIError(
+          AIErrorType.MALFORMED_RESPONSE,
+          "Server AI proxy returned an empty response."
+        );
+      }
+
+      return data.text.trim();
+    } catch (err) {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener("abort", onAbort);
+
+      if (err instanceof AIError) throw err;
+
+      if (err.name === "AbortError" || signal?.aborted) {
+        if (timeoutController.signal.reason?.message === "Timeout") {
+          throw new AIError(AIErrorType.TIMEOUT, `Request timed out after ${timeoutMs}ms.`);
+        }
+        throw new AIError(AIErrorType.CANCELLED);
+      }
+
+      throw new AIError(AIErrorType.NETWORK_ERROR, err.message, err);
     }
   }
 }

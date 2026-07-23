@@ -10,6 +10,7 @@ import AIActionCard from "./AIActionCard";
 import useAIStore, { AIActionType } from "../../store/aiStore";
 import useEditorStore from "../../store/editorStore";
 import aiService from "../../services/aiService";
+import { AIError, AIErrorType } from "../../ai/errors/aiErrors";
 
 const AI_ACTIONS_CONFIG = [
   {
@@ -57,15 +58,28 @@ const AI_ACTIONS_CONFIG = [
 ];
 
 export default function AIActions() {
-  const { selectedAction, isLoading } = useAIStore();
+  const { selectedAction, isLoading, setError } = useAIStore();
   const { code, language, output } = useEditorStore();
 
   const handleCardClick = async (action) => {
     if (isLoading) return;
+
+    // Empty Editor Validation Guard
+    if (!code || !code.trim()) {
+      setError(
+        null,
+        new AIError(
+          AIErrorType.EMPTY_REQUEST,
+          "Start writing code before using AI."
+        )
+      );
+      return;
+    }
+
     try {
       await action.handler(code, language, output);
     } catch (_) {
-      // Errors handled gracefully by aiStore
+      // Error handled by aiStore
     }
   };
 

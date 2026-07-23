@@ -1,7 +1,7 @@
 /**
  * Dedicated Zustand Store for PixelIDE AI Foundation Infrastructure
  * Manages loading states, active actions, responses, error payloads, request cancellation,
- * provider configuration, response history, and AI sidebar UI visibility.
+ * provider configuration, response history, last request tracking, and AI sidebar UI visibility.
  */
 
 import { create } from "zustand";
@@ -33,6 +33,7 @@ const useAIStore = create((set, get) => ({
   currentAction: null,
   response: null,
   error: null,
+  lastRequest: null, // Tracks last execution payload for Retry functionality
   history: [],
   provider: aiConfigManager.getProvider(),
   model: aiConfigManager.getModel(),
@@ -49,7 +50,7 @@ const useAIStore = create((set, get) => ({
   /**
    * Initializes action execution state and returns an AbortSignal for the request.
    */
-  startAction: (actionType) => {
+  startAction: (actionType, requestMeta = null) => {
     // Cancel any existing pending action
     get().cancelAction();
 
@@ -63,6 +64,7 @@ const useAIStore = create((set, get) => ({
       selectedAction: actionType,
       response: null,
       error: null,
+      ...(requestMeta ? { lastRequest: requestMeta } : {}),
     });
 
     return { requestId, signal: controller.signal };
