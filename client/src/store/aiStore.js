@@ -15,7 +15,12 @@ export const AIActionType = {
   OPTIMIZE: "OPTIMIZE",
   TESTS: "TESTS",
   DOCS: "DOCS",
+  REFACTOR: "REFACTOR",
+  FIX_BUG: "FIX_BUG",
+  COMMIT_MESSAGE: "COMMIT_MESSAGE",
+  PROJECT_SUMMARY: "PROJECT_SUMMARY",
   INTERVIEW: "INTERVIEW",
+  CHAT: "CHAT",
   CUSTOM: "CUSTOM",
 };
 
@@ -23,10 +28,22 @@ export const AIActionType = {
 const activeAbortControllers = new Map();
 
 const useAIStore = create((set, get) => ({
-  // UI Sidebar State
+  // UI Sidebar State & Tab Navigation
   isOpen: false,
   selectedAction: null,
   showHistoryView: false,
+  activeTab: "tools", // "tools" | "chat" | "history"
+
+  // AI Chat State
+  chatHistory: [
+    {
+      id: "welcome-1",
+      sender: "ai",
+      text: "Hello! I am Pix AI, your workspace-aware coding assistant. How can I help you with your project today?",
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    },
+  ],
+  isChatLoading: false,
 
   // Execution & Foundation State
   isLoading: false,
@@ -47,10 +64,44 @@ const useAIStore = create((set, get) => ({
   openSidebar: () => set({ isOpen: true }),
   closeSidebar: () => set({ isOpen: false }),
   toggleSidebar: () => set((state) => ({ isOpen: !state.isOpen })),
-  toggleHistoryView: () => set((state) => ({ showHistoryView: !state.showHistoryView })),
-  setShowHistoryView: (showHistoryView) => set({ showHistoryView }),
-  selectAction: (action) => set({ selectedAction: action }),
+  setActiveTab: (tab) => set({ activeTab: tab, showHistoryView: tab === "history" }),
+  toggleHistoryView: () =>
+    set((state) => ({
+      showHistoryView: !state.showHistoryView,
+      activeTab: !state.showHistoryView ? "history" : "tools",
+    })),
+  setShowHistoryView: (showHistoryView) =>
+    set({ showHistoryView, activeTab: showHistoryView ? "history" : "tools" }),
+  selectAction: (action) => set({ selectedAction: action, activeTab: "tools" }),
   setLoading: (isLoading) => set({ isLoading }),
+
+  // Chat Actions
+  addChatMessage: (sender, text) => {
+    const newMessage = {
+      id: crypto.randomUUID(),
+      sender,
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+    set((state) => ({
+      chatHistory: [...state.chatHistory, newMessage],
+    }));
+    return newMessage.id;
+  },
+
+  setChatLoading: (isChatLoading) => set({ isChatLoading }),
+
+  clearChat: () =>
+    set({
+      chatHistory: [
+        {
+          id: crypto.randomUUID(),
+          sender: "ai",
+          text: "Chat history cleared. How can I assist you with your workspace?",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ],
+    }),
 
   /**
    * Initializes action execution state and returns an AbortSignal for the request.

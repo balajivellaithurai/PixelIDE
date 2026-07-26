@@ -292,3 +292,211 @@ As an interviewer:
 4. Provide a constructive hint or follow-up question.`,
   };
 };
+
+/**
+ * AI Refactor Prompt Generator (Feature 3)
+ */
+export const refactorPrompt = (context = {}) => {
+  const { language = "javascript", filename = "file", sourceCode = "" } = context;
+
+  return {
+    systemInstruction: SYSTEM_INSTRUCTIONS.CODE_EXPERT,
+    prompt: `Perform an intelligent, production-grade code refactoring on file "${filename}" (${language}):
+
+\`\`\`${language}
+${sourceCode}
+\`\`\`
+
+Refactoring Requirements:
+1. Preserve exact business functionality and semantics.
+2. Improve readability, variable/function naming, and formatting.
+3. Remove duplicate or dead code logic.
+4. Enhance software architecture, modularity, and clean code practices.
+
+Please output your response strictly under these exact headers:
+
+## Original Code
+\`\`\`${language}
+${sourceCode}
+\`\`\`
+
+## Refactored Code
+\`\`\`${language}
+[Full refactored code implementation]
+\`\`\`
+
+## Explanation of Changes
+- [Detailed bullet points explaining key refactoring decisions, naming improvements, and structural changes]`,
+  };
+};
+
+/**
+ * AI Bug Fix Prompt Generator (Feature 4)
+ */
+export const fixBugPrompt = (context = {}) => {
+  const {
+    language = "javascript",
+    filename = "file",
+    sourceCode = "",
+    compileOutput = "",
+    stderr = "",
+    consoleOutput = "",
+  } = context;
+
+  return {
+    systemInstruction: SYSTEM_INSTRUCTIONS.DEBUGGER,
+    prompt: `Identify and fix all bugs in file "${filename}" (${language}):
+
+### Source Code:
+\`\`\`${language}
+${sourceCode}
+\`\`\`
+
+### Execution Output & Diagnostics:
+- **Compiler Errors:** ${compileOutput || "None"}
+- **Runtime Errors:** ${stderr || "None"}
+- **Console Output:** ${consoleOutput || "None"}
+
+Please structure your response strictly under these exact headers:
+
+## Identified Bug
+[Clear description of the bug, syntax error, or logical flaw found]
+
+## Why It Occurs
+[Technical explanation of why the failure or unexpected behavior happens]
+
+## Corrected Code
+\`\`\`${language}
+[Full corrected working source code]
+\`\`\`
+
+## Explanation of Fix
+[Step-by-step summary of the fixes applied and how they prevent recurrence]`,
+  };
+};
+
+/**
+ * AI Commit Message Generator Prompt Generator (Feature 5)
+ */
+export const commitMessagePrompt = (context = {}) => {
+  const { files = [], projectTree = "", recentlyEditedFiles = [] } = context;
+
+  const filesSummary = files
+    .map((f) => `- ${f.name} (${f.language}, ${f.contentLength} bytes)`)
+    .join("\n");
+
+  return {
+    systemInstruction: SYSTEM_INSTRUCTIONS.CODE_EXPERT,
+    prompt: `Analyze the current workspace state and generate professional Git commit messages:
+
+### Workspace Project Files:
+${filesSummary || projectTree}
+
+### Recently Modified Files:
+${recentlyEditedFiles.join(", ") || "Active file edits"}
+
+Provide structured git commit messages under the following markdown headers:
+
+## Conventional Commit
+\`\`\`
+[type]([scope]): [short imperative summary in lowercase]
+\`\`\`
+*(Example: feat(workspace): add multi-file state management)*
+
+## Short Version
+[Single concise sentence summarizing the main workspace change]
+
+## Detailed Version
+[Comprehensive multi-paragraph commit message body suitable for pull request descriptions]
+
+## Bullet Summary
+- [Bullet list of key changes across files]`,
+  };
+};
+
+/**
+ * Workspace Summary Prompt Generator (Feature 6)
+ */
+export const workspaceSummaryPrompt = (context = {}) => {
+  const { files = [], projectTree = "", activeFile = null } = context;
+
+  const filesContent = files
+    .map((f) => `### File: ${f.name} (${f.language})\n\`\`\`${f.language}\n${f.content.slice(0, 1000)}\n\`\`\``)
+    .join("\n\n");
+
+  return {
+    systemInstruction: SYSTEM_INSTRUCTIONS.CODE_EXPERT,
+    prompt: `Generate an executive Workspace Summary for this IDE project:
+
+### Active File: ${activeFile?.name || "None"}
+### Project Tree:
+${projectTree}
+
+### Workspace Files Contents (Snippets):
+${filesContent}
+
+Please analyze the entire workspace and generate a structured project analysis under these exact headers:
+
+## Technologies Used
+- [Languages, libraries, framework paradigms detected]
+
+## Folder Structure
+\`\`\`
+${projectTree}
+\`\`\`
+
+## Components
+- [Key modules, components, and functions identified across files]
+
+## State Management
+[Analysis of state management, variables, and data flow]
+
+## API Usage
+[Network calls, Judge0 endpoints, or external APIs detected]
+
+## AI Features
+[Integrated AI tools, prompts, or intelligence capabilities]
+
+## Suggestions
+- [Actionable recommendations for architecture, performance, or refactoring]`,
+  };
+};
+
+/**
+ * AI Workspace Chat Prompt Generator (Feature 2)
+ */
+export const chatPrompt = (messages = [], context = {}) => {
+  const {
+    filename = "file",
+    language = "javascript",
+    sourceCode = "",
+    selectedCode = "",
+    projectTree = "",
+    files = [],
+  } = context;
+
+  const recentConversation = messages
+    .slice(-10)
+    .map((m) => `${m.sender === "user" ? "User" : "AI Assistant"}: ${m.text}`)
+    .join("\n\n");
+
+  const filesOverview = files
+    .map((f) => `- ${f.name} (${f.language})`)
+    .join("\n");
+
+  return {
+    systemInstruction:
+      "You are Pix AI, a world-class senior software engineer and AI assistant built directly into Pix IDE. You have full context of the user's workspace, active file, project tree, and selection. Answer questions accurately, concisely, and cleanly using Markdown formatting and syntax-highlighted code blocks.",
+    prompt: `Workspace Context:
+- Active File: ${filename} (${language})
+- Workspace Files:\n${filesOverview}
+- Project Structure:\n${projectTree}
+${selectedCode ? `- Highlighted Selection:\n\`\`\`${language}\n${selectedCode}\n\`\`\`\n` : ""}
+- Active File Code:\n\`\`\`${language}\n${sourceCode}\n\`\`\`
+
+Conversation History:
+${recentConversation}
+
+Answer the user's request comprehensively based on the full workspace context provided.`,
+  };
+};

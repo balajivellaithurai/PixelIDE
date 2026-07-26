@@ -56,6 +56,7 @@ const useWorkspaceStore = create((set, get) => ({
   ],
   activeFileId: "1",
   openFiles: ["1", "2", "3"],
+  recentlyEditedFiles: ["app.js", "script.py", "main.cpp"],
 
   setActiveFile: (id) => {
     const file = get().files.find((f) => f.id === id);
@@ -65,6 +66,10 @@ const useWorkspaceStore = create((set, get) => ({
         openFiles: state.openFiles.includes(id)
           ? state.openFiles
           : [...state.openFiles, id],
+        recentlyEditedFiles: [
+          file.name,
+          ...state.recentlyEditedFiles.filter((n) => n !== file.name),
+        ].slice(0, 10),
       }));
       useEditorStore.getState().setLanguage(file.language);
       if (file.content !== undefined) {
@@ -74,11 +79,19 @@ const useWorkspaceStore = create((set, get) => ({
   },
 
   updateFileContent: (id, content) =>
-    set((state) => ({
-      files: state.files.map((file) =>
-        file.id === id ? { ...file, content } : file
-      ),
-    })),
+    set((state) => {
+      const target = state.files.find((f) => f.id === id);
+      const recent = target
+        ? [target.name, ...state.recentlyEditedFiles.filter((n) => n !== target.name)].slice(0, 10)
+        : state.recentlyEditedFiles;
+
+      return {
+        files: state.files.map((file) =>
+          file.id === id ? { ...file, content } : file
+        ),
+        recentlyEditedFiles: recent,
+      };
+    }),
 
   createFile: (name, language) => {
     if (!name || !name.trim()) return;

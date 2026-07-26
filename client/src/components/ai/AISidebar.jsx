@@ -5,10 +5,11 @@ import AILoading from "./AILoading";
 import AIResponse from "./AIResponse";
 import AIEmptyState from "./AIEmptyState";
 import AIHistory from "./AIHistory";
+import AIChatPanel from "./AIChatPanel";
 import useAIStore from "../../store/aiStore";
 
 export default function AISidebar() {
-  const { isOpen, isLoading, response, showHistoryView } = useAIStore();
+  const { isOpen, isLoading, response, activeTab } = useAIStore();
 
   return (
     <AnimatePresence>
@@ -24,12 +25,14 @@ export default function AISidebar() {
           }}
           className="w-96 border-l flex flex-col h-full z-30 shrink-0 shadow-2xl transition-colors duration-200"
         >
-          {/* Header */}
+          {/* Header & Tab Switcher */}
           <AIHeader />
 
-          {/* Scrollable Main Body */}
-          <div className="flex-1 overflow-y-auto flex flex-col">
-            {showHistoryView ? (
+          {/* Main Content View by Active Tab */}
+          <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+            {activeTab === "chat" ? (
+              <AIChatPanel />
+            ) : activeTab === "history" ? (
               <AIHistory />
             ) : (
               <>

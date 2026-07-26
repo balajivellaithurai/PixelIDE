@@ -18,6 +18,11 @@ import {
   testsPrompt,
   documentationPrompt,
   interviewPrompt,
+  refactorPrompt,
+  fixBugPrompt,
+  commitMessagePrompt,
+  workspaceSummaryPrompt,
+  chatPrompt,
 } from "../ai/prompts/promptTemplates";
 
 // Response cache map: cacheKey -> { responseText, metadata, timestamp }
@@ -191,6 +196,81 @@ class AIService {
   }
 
   /**
+   * Refactors code for readability, architecture, and naming.
+   * @param {Object} [overrides={}] - Optional context overrides
+   */
+  async refactorCode(overrides = {}) {
+    const context = buildAIContext(AIActionType.REFACTOR, overrides);
+    return this._executeAction(AIActionType.REFACTOR, context, refactorPrompt);
+  }
+
+  /**
+   * Identifies bugs and generates corrected code with explanations.
+   * @param {Object} [overrides={}] - Optional context overrides
+   */
+  async fixBug(overrides = {}) {
+    const context = buildAIContext(AIActionType.FIX_BUG, overrides);
+    return this._executeAction(AIActionType.FIX_BUG, context, fixBugPrompt);
+  }
+
+  /**
+   * Analyzes workspace changes and generates Conventional Commit messages.
+   * @param {Object} [overrides={}] - Optional context overrides
+   */
+  async generateCommitMessage(overrides = {}) {
+    const context = buildAIContext(AIActionType.COMMIT_MESSAGE, overrides);
+    return this._executeAction(AIActionType.COMMIT_MESSAGE, context, commitMessagePrompt);
+  }
+
+  /**
+   * Generates a 1-click executive Workspace Project Summary.
+   * @param {Object} [overrides={}] - Optional context overrides
+   */
+  async summarizeWorkspace(overrides = {}) {
+    const context = buildAIContext(AIActionType.PROJECT_SUMMARY, overrides);
+    return this._executeAction(AIActionType.PROJECT_SUMMARY, context, workspaceSummaryPrompt);
+  }
+
+  /**
+   * Sends a user message to the AI Workspace Chat with full workspace context.
+   * @param {string} userText - User chat prompt message
+   */
+  async sendChatMessage(userText) {
+    if (!userText || !userText.trim()) return;
+
+    const { addChatMessage, setChatLoading, setError, chatHistory } = useAIStore.getState();
+    addChatMessage("user", userText);
+    setChatLoading(true);
+
+    const context = buildAIContext(AIActionType.CHAT);
+    const promptData = chatPrompt(chatHistory, context);
+
+    try {
+      const provider = providerFactory.getProvider();
+      const config = aiConfigManager.getConfig();
+
+      const responseText = await provider.generateContent({
+        prompt: promptData.prompt,
+        systemInstruction: promptData.systemInstruction,
+        config,
+      });
+
+      addChatMessage("ai", responseText);
+      setChatLoading(false);
+      return responseText;
+    } catch (err) {
+      setChatLoading(false);
+      const aiError =
+        err instanceof AIError
+          ? err
+          : new AIError(AIErrorType.UNKNOWN_ERROR, err.message, err);
+
+      setError(null, aiError);
+      throw aiError;
+    }
+  }
+
+  /**
    * Retries the previous AI request reusing the previous AI context.
    */
   async retryLastRequest() {
@@ -207,6 +287,10 @@ class AIService {
       [AIActionType.OPTIMIZE]: optimizePrompt,
       [AIActionType.TESTS]: testsPrompt,
       [AIActionType.DOCS]: documentationPrompt,
+      [AIActionType.REFACTOR]: refactorPrompt,
+      [AIActionType.FIX_BUG]: fixBugPrompt,
+      [AIActionType.COMMIT_MESSAGE]: commitMessagePrompt,
+      [AIActionType.PROJECT_SUMMARY]: workspaceSummaryPrompt,
       [AIActionType.INTERVIEW]: interviewPrompt,
     };
 
