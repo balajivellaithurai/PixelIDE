@@ -5,19 +5,22 @@ import EditorPanel from "../components/layout/EditorPanel";
 import Console from "../components/layout/Console";
 import AISidebar from "../components/ai/AISidebar";
 import AIToggleButton from "../components/ai/AIToggleButton";
+import CommandPalette from "../components/ide/CommandPalette";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 
 const Workspace = () => {
-  // Activate global keyboard shortcut system
+  // Activate global keyboard shortcut system (Ctrl+S, Ctrl+O, Ctrl+Enter, Ctrl+Shift+P, Ctrl+Shift+F)
   useKeyboardShortcuts();
 
   return (
     <div
       style={{ backgroundColor: "var(--bg-app)" }}
-      className="h-screen flex flex-col transition-colors duration-200"
+      className="h-screen flex flex-col transition-colors duration-200 font-sans selection:bg-purple-500/30 overflow-hidden"
     >
+      {/* Top Navigation Bar */}
       <Navbar />
 
+      {/* Main Workspace Body */}
       <div className="flex flex-1 overflow-hidden relative">
         <Sidebar />
 
@@ -30,7 +33,11 @@ const Workspace = () => {
         <AISidebar />
       </div>
 
+      {/* Terminal / Console Panel */}
       <Console />
+
+      {/* VS Code Command Palette Overlay (Ctrl+Shift+P) */}
+      <CommandPalette />
     </div>
   );
 };

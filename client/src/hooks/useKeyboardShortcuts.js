@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import toast from "react-hot-toast";
 import useWorkspaceStore from "../store/workspaceStore";
 import useEditorStore from "../store/editorStore";
+import useIDEStore from "../store/ideStore";
 import { matchesShortcut } from "../services/shortcutService";
 
 export const SHORTCUTS = {
@@ -10,9 +11,30 @@ export const SHORTCUTS = {
   NEW_FILE: { key: "n", ctrl: true },
   RUN_CODE: { key: "Enter", ctrl: true },
   CLOSE_TAB: { key: "w", ctrl: true },
+  COMMAND_PALETTE: { key: "p", ctrl: true, shift: true },
+  GLOBAL_SEARCH: { key: "f", ctrl: true, shift: true },
 };
 
 export const handleGlobalShortcut = (e) => {
+  // Ctrl + Shift + P or F1 -> Command Palette
+  if (
+    matchesShortcut(e, SHORTCUTS.COMMAND_PALETTE) ||
+    (e.key === "F1" && !e.ctrlKey && !e.altKey)
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    useIDEStore.getState().openCommandPalette();
+    return true;
+  }
+
+  // Ctrl + Shift + F -> Global Search in Sidebar
+  if (matchesShortcut(e, SHORTCUTS.GLOBAL_SEARCH)) {
+    e.preventDefault();
+    e.stopPropagation();
+    useIDEStore.getState().setActiveSidebarTab("search");
+    return true;
+  }
+
   // Prevent overriding native typing in standard text inputs/textareas
   const activeEl = document.activeElement;
   const isInputOrTextArea =

@@ -3,24 +3,49 @@ import Editor from "@monaco-editor/react";
 import useEditorStore from "../../store/editorStore";
 import useWorkspaceStore from "../../store/workspaceStore";
 import useThemeStore from "../../store/themeStore";
+import useIDEStore from "../../store/ideStore";
 import { applyMonacoTheme } from "../../utils/themeRegistry";
 import { handleGlobalShortcut } from "../../hooks/useKeyboardShortcuts";
 import monacoService from "../../services/monacoService";
+import { parseFileOutline } from "../../services/outlineParser";
+import BreadcrumbBar from "../ide/BreadcrumbBar";
 
 const EditorPanel = () => {
   const { code, language, setCode } = useEditorStore();
-  const { activeFileId, updateFileContent } = useWorkspaceStore();
+  const { activeFileId, updateFileContent, files } = useWorkspaceStore();
   const { theme } = useThemeStore();
+  const { markFileUnsaved, setCurrentSymbol } = useIDEStore();
+
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
+
+  const activeFile = files.find((f) => f.id === activeFileId);
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
     monacoService.setEditorInstance(editor);
-
     applyMonacoTheme(monaco, theme);
+
+    // Listen to cursor position changes to update active breadcrumb symbol
+    editor.onDidChangeCursorPosition((e) => {
+      const line = e.position.lineNumber;
+      const currentCode = editor.getValue();
+      const currentLang = activeFile?.language || language || "javascript";
+      const symbols = parseFileOutline(currentCode, currentLang);
+
+      // Find nearest symbol at or before current line
+      let matchedSymbol = "";
+      for (const sym of symbols) {
+        if (sym.line <= line) {
+          matchedSymbol = sym.name;
+        } else {
+          break;
+        }
+      }
+      setCurrentSymbol(matchedSymbol);
+    });
 
     // Bind Monaco editor keydown bridge to trigger global IDE shortcuts
     editor.onKeyDown((e) => {
@@ -30,13 +55,6 @@ const EditorPanel = () => {
         e.stopPropagation();
       }
     });
-
-    const model = editor.getModel();
-    if (model) {
-      console.log(
-        `[Monaco Initialized] Model Language: "${model.getLanguageId()}" | Theme: "${theme}"`
-      );
-    }
   };
 
   // Dynamically switch model language when language state changes
@@ -61,28 +79,34 @@ const EditorPanel = () => {
     setCode(newCode);
     if (activeFileId) {
       updateFileContent(activeFileId, newCode);
+      markFileUnsaved(activeFileId);
     }
   };
 
   return (
     <div
       style={{ backgroundColor: "var(--bg-editor)" }}
-      className="flex-1 min-h-0 h-full transition-colors duration-200"
+      className="flex-1 min-h-0 h-full flex flex-col transition-colors duration-200"
     >
-      <Editor
-        height="100%"
-        language={language}
-        value={code}
-        onChange={handleChange}
-        onMount={handleEditorDidMount}
-        theme={theme}
-        options={{
-          fontSize: 14,
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-          automaticLayout: true,
-        }}
-      />
+      {/* Breadcrumb Navigation Bar */}
+      <BreadcrumbBar />
+
+      <div className="flex-1 min-h-0 relative">
+        <Editor
+          height="100%"
+          language={language}
+          value={code}
+          onChange={handleChange}
+          onMount={handleEditorDidMount}
+          theme={theme}
+          options={{
+            fontSize: 14,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+          }}
+        />
+      </div>
     </div>
   );
 };

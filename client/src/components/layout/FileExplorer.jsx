@@ -1,9 +1,12 @@
 import { useState } from "react";
 import useWorkspaceStore from "../../store/workspaceStore";
+import useIDEStore from "../../store/ideStore";
+import FileIcon from "../ide/FileIcon";
 
 export default function FileExplorer() {
   const { files, activeFileId, setActiveFile, createFile, deleteFile } =
     useWorkspaceStore();
+  const { unsavedFileIds } = useIDEStore();
 
   const [fileName, setFileName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -36,12 +39,12 @@ export default function FileExplorer() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h2
           style={{ color: "var(--text-muted)" }}
           className="text-xs font-bold uppercase tracking-wider"
         >
-          Explorer
+          Files ({files.length})
         </h2>
         <button
           onClick={() => setIsCreating(!isCreating)}
@@ -97,6 +100,8 @@ export default function FileExplorer() {
       <div className="space-y-1 overflow-y-auto flex-1">
         {files.map((file) => {
           const isActive = activeFileId === file.id;
+          const isUnsaved = unsavedFileIds.includes(file.id);
+
           return (
             <div
               key={file.id}
@@ -110,13 +115,16 @@ export default function FileExplorer() {
                     }
                   : { color: "var(--text-main)" }
               }
-              className={`group flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer text-sm transition-colors ${
+              className={`group flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer text-xs transition-colors ${
                 !isActive ? "hover:bg-[var(--bg-hover)]" : ""
               }`}
             >
               <div className="flex items-center space-x-2 truncate">
-                <span className="text-xs">📄</span>
+                <FileIcon filename={file.name} className="w-3.5 h-3.5" />
                 <span className="truncate">{file.name}</span>
+                {isUnsaved && (
+                  <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" title="Modified file"></span>
+                )}
               </div>
 
               {files.length > 1 && (
