@@ -1,8 +1,9 @@
-import { FiCpu, FiX, FiSettings } from "react-icons/fi";
+import { FiCpu, FiX, FiClock } from "react-icons/fi";
 import useAIStore from "../../store/aiStore";
 
 export default function AIHeader() {
-  const closeSidebar = useAIStore((state) => state.closeSidebar);
+  const { closeSidebar, showHistoryView, toggleHistoryView, history } =
+    useAIStore();
 
   return (
     <div
@@ -22,17 +23,25 @@ export default function AIHeader() {
               PRO
             </span>
           </h2>
-          <p className="text-xs text-neutral-400">Smart coding companion</p>
+          <p className="text-xs text-neutral-400">Context-Aware AI IDE</p>
         </div>
       </div>
 
       <div className="flex items-center gap-1">
-        {/* Placeholder for future Settings button */}
+        {/* Toggle History View Button */}
         <button
-          className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800/80 transition cursor-pointer"
-          title="AI Settings (Coming soon)"
+          onClick={toggleHistoryView}
+          className={`p-2 rounded-lg transition cursor-pointer relative ${
+            showHistoryView
+              ? "bg-purple-600/30 text-purple-300 border border-purple-500/40"
+              : "text-neutral-400 hover:text-white hover:bg-neutral-800/80"
+          }`}
+          title="Toggle Session AI History"
         >
-          <FiSettings className="text-base" />
+          <FiClock className="text-base" />
+          {history.length > 0 && !showHistoryView && (
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-purple-500"></span>
+          )}
         </button>
 
         {/* Close Sidebar Button */}

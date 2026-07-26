@@ -26,14 +26,17 @@ const useAIStore = create((set, get) => ({
   // UI Sidebar State
   isOpen: false,
   selectedAction: null,
+  showHistoryView: false,
 
   // Execution & Foundation State
   isLoading: false,
   isStreaming: false,
   currentAction: null,
   response: null,
+  responseMetadata: null, // Holds metadata: { filename, language, action, durationMs, estimatedTokens, generatedAt }
   error: null,
   lastRequest: null, // Tracks last execution payload for Retry functionality
+  lastContext: null, // Context object of last AI request
   history: [],
   provider: aiConfigManager.getProvider(),
   model: aiConfigManager.getModel(),
@@ -44,6 +47,8 @@ const useAIStore = create((set, get) => ({
   openSidebar: () => set({ isOpen: true }),
   closeSidebar: () => set({ isOpen: false }),
   toggleSidebar: () => set((state) => ({ isOpen: !state.isOpen })),
+  toggleHistoryView: () => set((state) => ({ showHistoryView: !state.showHistoryView })),
+  setShowHistoryView: (showHistoryView) => set({ showHistoryView }),
   selectAction: (action) => set({ selectedAction: action }),
   setLoading: (isLoading) => set({ isLoading }),
 
@@ -58,13 +63,18 @@ const useAIStore = create((set, get) => ({
     const requestId = crypto.randomUUID();
     activeAbortControllers.set(requestId, controller);
 
+    const context = requestMeta?.context || null;
+
     set({
       isLoading: true,
       currentAction: actionType,
       selectedAction: actionType,
+      showHistoryView: false,
       response: null,
+      responseMetadata: null,
       error: null,
       ...(requestMeta ? { lastRequest: requestMeta } : {}),
+      ...(context ? { lastContext: context } : {}),
     });
 
     return { requestId, signal: controller.signal };
@@ -78,21 +88,58 @@ const useAIStore = create((set, get) => ({
       activeAbortControllers.delete(requestId);
     }
 
+    const currentAction = get().currentAction || meta.action || "AI Output";
+    const filename = meta.context?.filename || meta.filename || "file";
+    const language = meta.context?.language || meta.language || "code";
+
+    const metadata = {
+      filename,
+      language,
+      action: currentAction,
+      durationMs: meta.durationMs || 0,
+      estimatedTokens: meta.estimatedTokens || Math.ceil((responseText.length || 0) / 4),
+      generatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      timestamp: new Date().toISOString(),
+    };
+
     const newHistoryItem = {
       id: crypto.randomUUID(),
-      action: get().currentAction,
+      action: currentAction,
+      filename,
+      language,
       response: responseText,
-      timestamp: new Date().toISOString(),
-      ...meta,
+      timestamp: metadata.generatedAt,
+      context: meta.context || get().lastContext,
+      metadata,
     };
 
     set((state) => ({
       isLoading: false,
       isStreaming: false,
       response: responseText,
+      responseMetadata: metadata,
       error: null,
       history: [newHistoryItem, ...state.history].slice(0, 50), // keep max 50 items
     }));
+  },
+
+  /**
+   * Restores a past item from history to active response view.
+   */
+  restoreHistoryItem: (item) => {
+    set({
+      response: item.response,
+      responseMetadata: item.metadata || {
+        filename: item.filename || "file",
+        language: item.language || "code",
+        action: item.action || "History",
+        generatedAt: item.timestamp,
+      },
+      currentAction: item.action,
+      selectedAction: item.action,
+      showHistoryView: false,
+      error: null,
+    });
   },
 
   /**
@@ -103,7 +150,7 @@ const useAIStore = create((set, get) => ({
       activeAbortControllers.delete(requestId);
     }
 
-    let formattedError = null;
+    let formattedError;
     if (errorPayload instanceof AIError) {
       formattedError = errorPayload.toJSON();
     } else if (errorPayload instanceof Error) {
@@ -136,7 +183,9 @@ const useAIStore = create((set, get) => ({
     activeAbortControllers.forEach((controller) => {
       try {
         controller.abort(new Error("User cancelled operation"));
-      } catch (_) {}
+      } catch {
+        // Ignore abort errors
+      }
     });
     activeAbortControllers.clear();
 
@@ -158,7 +207,7 @@ const useAIStore = create((set, get) => ({
    * Resets response and error.
    */
   clearResponse: () =>
-    set({ response: null, error: null, currentAction: null, selectedAction: null }),
+    set({ response: null, responseMetadata: null, error: null, currentAction: null, selectedAction: null }),
 
   /**
    * Clears request history.

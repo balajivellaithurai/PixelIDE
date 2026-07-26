@@ -24,7 +24,7 @@ export const AI_PROVIDERS = {
 export const DEFAULT_AI_CONFIG = {
   provider: getEnv("VITE_AI_PROVIDER", AI_PROVIDERS.GEMINI),
   apiKey: getEnv("VITE_GEMINI_API_KEY", ""),
-  model: getEnv("VITE_AI_MODEL", "gemini-1.5-flash"),
+  model: getEnv("VITE_AI_MODEL", "gemini-3.6-flash"),
   temperature: parseFloat(getEnv("VITE_AI_TEMPERATURE", "0.7")),
   timeoutMs: parseInt(getEnv("VITE_AI_TIMEOUT_MS", "30000"), 10),
   maxTokens: 4096,

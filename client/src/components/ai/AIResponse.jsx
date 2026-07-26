@@ -1,15 +1,36 @@
 import { useState } from "react";
-import { FiCopy, FiCheck, FiRefreshCw, FiAlertTriangle, FiCode } from "react-icons/fi";
+import {
+  FiCopy,
+  FiCheck,
+  FiRefreshCw,
+  FiAlertTriangle,
+  FiCode,
+  FiDownload,
+  FiMaximize2,
+  FiMinimize2,
+  FiFileText,
+  FiClock,
+  FiZap,
+} from "react-icons/fi";
 import { motion } from "framer-motion";
 import useAIStore from "../../store/aiStore";
 import aiService from "../../services/aiService";
 import { AIErrorType } from "../../ai/errors/aiErrors";
 
 export default function AIResponse() {
-  const { response, error, currentAction, clearResponse, isLoading } = useAIStore();
-  const [copied, setCopied] = useState(false);
+  const {
+    response,
+    responseMetadata,
+    error,
+    currentAction,
+    clearResponse,
+    isLoading,
+  } = useAIStore();
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState(null);
+  const [expandedIndex, setExpandedIndex] = useState(null);
 
-  // 1. Error View with Retry Button or Empty Editor Message
+  // Error View with Retry Button or Empty Editor Message
   if (error) {
     const isEmptyRequest = error.type === AIErrorType.EMPTY_REQUEST;
 
@@ -67,8 +88,37 @@ export default function AIResponse() {
 
   const handleCopyAll = () => {
     navigator.clipboard.writeText(response);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  };
+
+  const handleCopyCodeBlock = (codeText, index) => {
+    navigator.clipboard.writeText(codeText);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const handleDownloadCode = (codeText, lang) => {
+    const extMap = {
+      javascript: "js",
+      python: "py",
+      cpp: "cpp",
+      c: "c",
+      java: "java",
+      html: "html",
+      css: "css",
+      json: "json",
+    };
+    const ext = extMap[lang.toLowerCase()] || "txt";
+    const blob = new Blob([codeText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `snippet.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Parses markdown text into formatted blocks (headers, lists, tables, blockquotes, code blocks)
@@ -81,29 +131,66 @@ export default function AIResponse() {
         const lines = part.split("\n");
         const lang = lines[0].replace("```", "").trim() || "code";
         const codeText = lines.slice(1, lines.length - 1).join("\n");
+        const isExpanded = expandedIndex === index;
 
         return (
           <div
             key={index}
-            className="my-3 rounded-xl border border-neutral-800 bg-neutral-950 overflow-hidden font-mono text-xs shadow-lg"
+            className={`my-3 rounded-xl border border-neutral-800 bg-neutral-950 overflow-hidden font-mono text-xs shadow-lg transition-all ${
+              isExpanded ? "ring-1 ring-purple-500/50" : ""
+            }`}
           >
-            <div className="flex items-center justify-between px-3 py-1.5 bg-neutral-900 border-b border-neutral-800 text-[11px] text-neutral-400">
-              <span className="font-semibold text-purple-400 uppercase tracking-wider text-[10px]">
+            {/* Code Block Header Controls */}
+            <div className="flex items-center justify-between px-3 py-2 bg-neutral-900 border-b border-neutral-800 text-[11px] text-neutral-400">
+              <span className="font-semibold text-purple-400 uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
                 {lang}
               </span>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(codeText);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                className="hover:text-white transition flex items-center gap-1 cursor-pointer font-sans"
-              >
-                {copied ? <FiCheck className="text-emerald-400" /> : <FiCopy />}
-                <span>{copied ? "Copied" : "Copy Code"}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Copy Button */}
+                <button
+                  onClick={() => handleCopyCodeBlock(codeText, index)}
+                  className="hover:text-white transition flex items-center gap-1 cursor-pointer font-sans text-[11px] px-1.5 py-0.5 rounded hover:bg-neutral-800"
+                  title="Copy code"
+                >
+                  {copiedIndex === index ? (
+                    <FiCheck className="text-emerald-400" />
+                  ) : (
+                    <FiCopy />
+                  )}
+                  <span>{copiedIndex === index ? "Copied" : "Copy"}</span>
+                </button>
+
+                {/* Download Button */}
+                <button
+                  onClick={() => handleDownloadCode(codeText, lang)}
+                  className="hover:text-white transition flex items-center gap-1 cursor-pointer font-sans text-[11px] px-1.5 py-0.5 rounded hover:bg-neutral-800"
+                  title="Download snippet file"
+                >
+                  <FiDownload />
+                  <span>Download</span>
+                </button>
+
+                {/* Expand / Collapse Button */}
+                <button
+                  onClick={() =>
+                    setExpandedIndex(isExpanded ? null : index)
+                  }
+                  className="hover:text-white transition flex items-center gap-1 cursor-pointer font-sans text-[11px] px-1.5 py-0.5 rounded hover:bg-neutral-800"
+                  title={isExpanded ? "Collapse code view" : "Expand code view"}
+                >
+                  {isExpanded ? <FiMinimize2 /> : <FiMaximize2 />}
+                  <span>{isExpanded ? "Collapse" : "Expand"}</span>
+                </button>
+              </div>
             </div>
-            <pre className="p-3 overflow-x-auto text-neutral-200 leading-relaxed font-mono selection:bg-purple-500/30">
+
+            {/* Code Content */}
+            <pre
+              className={`p-3 overflow-x-auto text-neutral-200 leading-relaxed font-mono selection:bg-purple-500/30 transition-all ${
+                isExpanded ? "max-h-[500px]" : "max-h-72"
+              }`}
+            >
               <code>{codeText}</code>
             </pre>
           </div>
@@ -119,35 +206,56 @@ export default function AIResponse() {
 
       lines.forEach((line, lIdx) => {
         // Table Detector
-        if (line.includes("|") && line.trim().startsWith("|") && line.trim().endsWith("|")) {
+        if (
+          line.includes("|") &&
+          line.trim().startsWith("|") &&
+          line.trim().endsWith("|")
+        ) {
           if (!inTable) {
             inTable = true;
-            tableHeader = line.split("|").filter((c) => c.trim() !== "").map((c) => c.trim());
+            tableHeader = line
+              .split("|")
+              .filter((c) => c.trim() !== "")
+              .map((c) => c.trim());
           } else if (line.includes("---")) {
             // Divider line, skip
           } else {
-            tableRows.push(line.split("|").filter((c) => c.trim() !== "").map((c) => c.trim()));
+            tableRows.push(
+              line
+                .split("|")
+                .filter((c) => c.trim() !== "")
+                .map((c) => c.trim())
+            );
           }
           return;
         } else if (inTable) {
-          // Render accumulated table
           elements.push(
-            <div key={`tbl-${lIdx}`} className="my-3 overflow-x-auto rounded-lg border border-neutral-800">
+            <div
+              key={`tbl-${lIdx}`}
+              className="my-3 overflow-x-auto rounded-lg border border-neutral-800"
+            >
               <table className="w-full text-left text-xs">
                 {tableHeader && (
                   <thead className="bg-neutral-900 border-b border-neutral-800 text-purple-300">
                     <tr>
                       {tableHeader.map((h, hIdx) => (
-                        <th key={hIdx} className="p-2 font-semibold">{h}</th>
+                        <th key={hIdx} className="p-2 font-semibold">
+                          {h}
+                        </th>
                       ))}
                     </tr>
                   </thead>
                 )}
                 <tbody>
                   {tableRows.map((row, rIdx) => (
-                    <tr key={rIdx} className="border-b border-neutral-800/50 hover:bg-neutral-900/50">
+                    <tr
+                      key={rIdx}
+                      className="border-b border-neutral-800/50 hover:bg-neutral-900/50"
+                    >
                       {row.map((cell, cIdx) => (
-                        <td key={cIdx} className="p-2 text-neutral-300">{cell}</td>
+                        <td key={cIdx} className="p-2 text-neutral-300">
+                          {cell}
+                        </td>
                       ))}
                     </tr>
                   ))}
@@ -162,26 +270,58 @@ export default function AIResponse() {
 
         // Headings
         if (line.startsWith("# ")) {
-          elements.push(<h1 key={lIdx} className="font-extrabold text-base text-white pt-3 pb-1">{line.replace("# ", "")}</h1>);
+          elements.push(
+            <h1
+              key={lIdx}
+              className="font-extrabold text-base text-white pt-3 pb-1"
+            >
+              {line.replace("# ", "")}
+            </h1>
+          );
           return;
         }
         if (line.startsWith("## ")) {
-          elements.push(<h2 key={lIdx} className="font-bold text-sm text-purple-200 pt-2 pb-1 border-b border-neutral-800">{line.replace("## ", "")}</h2>);
+          elements.push(
+            <h2
+              key={lIdx}
+              className="font-bold text-sm text-purple-200 pt-2 pb-1 border-b border-neutral-800 flex items-center gap-1.5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+              {line.replace("## ", "")}
+            </h2>
+          );
           return;
         }
         if (line.startsWith("### ")) {
-          elements.push(<h3 key={lIdx} className="font-bold text-xs text-purple-400 pt-2 pb-0.5">{line.replace("### ", "")}</h3>);
+          elements.push(
+            <h3
+              key={lIdx}
+              className="font-bold text-xs text-purple-400 pt-2 pb-0.5"
+            >
+              {line.replace("### ", "")}
+            </h3>
+          );
           return;
         }
         if (line.startsWith("#### ")) {
-          elements.push(<h4 key={lIdx} className="font-semibold text-xs text-neutral-200 pt-1">{line.replace("#### ", "")}</h4>);
+          elements.push(
+            <h4
+              key={lIdx}
+              className="font-semibold text-xs text-neutral-200 pt-1"
+            >
+              {line.replace("#### ", "")}
+            </h4>
+          );
           return;
         }
 
         // Blockquote
         if (line.startsWith("> ")) {
           elements.push(
-            <blockquote key={lIdx} className="my-1.5 pl-3 border-l-2 border-purple-500 text-neutral-400 italic">
+            <blockquote
+              key={lIdx}
+              className="my-1.5 pl-3 border-l-2 border-purple-500 text-neutral-400 italic"
+            >
               {line.replace("> ", "")}
             </blockquote>
           );
@@ -189,10 +329,14 @@ export default function AIResponse() {
         }
 
         // Bullet lists
-        if (line.startsWith("• ") || line.startsWith("- ") || line.startsWith("* ")) {
+        if (
+          line.startsWith("• ") ||
+          line.startsWith("- ") ||
+          line.startsWith("* ")
+        ) {
           elements.push(
             <li key={lIdx} className="ml-4 list-disc text-neutral-300 py-0.5">
-              {formatInlineStyles(line.replace(/^([•\-\*]\s*)/, ""))}
+              {formatInlineStyles(line.replace(/^([•\-*]\s*)/, ""))}
             </li>
           );
           return;
@@ -201,7 +345,10 @@ export default function AIResponse() {
         // Numbered list
         if (/^\d+\.\s/.test(line)) {
           elements.push(
-            <div key={lIdx} className="ml-2 font-medium text-neutral-300 py-0.5">
+            <div
+              key={lIdx}
+              className="ml-2 font-medium text-neutral-300 py-0.5"
+            >
               {formatInlineStyles(line)}
             </div>
           );
@@ -220,7 +367,11 @@ export default function AIResponse() {
         );
       });
 
-      return <div key={index} className="space-y-1 text-xs leading-relaxed">{elements}</div>;
+      return (
+        <div key={index} className="space-y-1 text-xs leading-relaxed">
+          {elements}
+        </div>
+      );
     });
   };
 
@@ -230,7 +381,10 @@ export default function AIResponse() {
     return parts.map((part, i) => {
       if (part.startsWith("`") && part.endsWith("`")) {
         return (
-          <code key={i} className="px-1.5 py-0.5 bg-neutral-900 text-purple-300 border border-neutral-800 rounded font-mono text-[11px]">
+          <code
+            key={i}
+            className="px-1.5 py-0.5 bg-neutral-900 text-purple-300 border border-neutral-800 rounded font-mono text-[11px]"
+          >
             {part.slice(1, -1)}
           </code>
         );
@@ -246,6 +400,18 @@ export default function AIResponse() {
     });
   };
 
+  // Response Metadata values
+  const filename = responseMetadata?.filename || "file";
+  const language = responseMetadata?.language || "code";
+  const actionName = responseMetadata?.action || currentAction || "AI Output";
+  const timeTaken = responseMetadata?.durationMs
+    ? `${(responseMetadata.durationMs / 1000).toFixed(1)}s`
+    : "<1s";
+  const tokens = responseMetadata?.estimatedTokens
+    ? `~${responseMetadata.estimatedTokens} tokens`
+    : null;
+  const generatedAt = responseMetadata?.generatedAt || "";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -253,28 +419,61 @@ export default function AIResponse() {
       transition={{ duration: 0.3 }}
       className="p-4 flex flex-col h-full"
     >
-      {/* Top Response Controls */}
-      <div className="flex items-center justify-between pb-3 border-b border-neutral-800 mb-3">
-        <span className="text-[11px] font-semibold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          {currentAction ? `${currentAction} Response` : "AI Output"}
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopyAll}
-            className="px-2 py-1 text-[11px] rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition flex items-center gap-1 cursor-pointer"
-            title="Copy all response text"
-          >
-            {copied ? <FiCheck className="text-emerald-400" /> : <FiCopy />}
-            <span>{copied ? "Copied" : "Copy All"}</span>
-          </button>
-          <button
-            onClick={clearResponse}
-            className="p-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition cursor-pointer"
-            title="Clear output"
-          >
-            <FiRefreshCw className="text-xs" />
-          </button>
+      {/* Requirement 12: Response Metadata Banner Above Every Response */}
+      <div className="mb-3.5 p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800 shadow-inner">
+        <div className="flex items-center justify-between pb-2 border-b border-neutral-800/60 mb-2">
+          <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            {actionName}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyAll}
+              className="px-2 py-1 text-[10px] rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition flex items-center gap-1 cursor-pointer"
+              title="Copy all response text"
+            >
+              {copiedAll ? <FiCheck className="text-emerald-400" /> : <FiCopy />}
+              <span>{copiedAll ? "Copied" : "Copy All"}</span>
+            </button>
+            <button
+              onClick={clearResponse}
+              className="p-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition cursor-pointer"
+              title="Clear output"
+            >
+              <FiRefreshCw className="text-xs" />
+            </button>
+          </div>
+        </div>
+
+        {/* Metadata Details Grid */}
+        <div className="grid grid-cols-2 gap-1.5 text-[10px] text-neutral-400 font-sans">
+          <div className="flex items-center gap-1 truncate" title={`File: ${filename}`}>
+            <FiFileText className="text-purple-400 shrink-0" />
+            <span className="truncate">
+              File: <strong className="text-neutral-200">{filename}</strong>
+            </span>
+          </div>
+          <div className="flex items-center gap-1 truncate" title={`Language: ${language}`}>
+            <FiCode className="text-purple-400 shrink-0" />
+            <span className="capitalize truncate">
+              Lang: <strong className="text-neutral-200">{language}</strong>
+            </span>
+          </div>
+          <div className="flex items-center gap-1 truncate">
+            <FiClock className="text-purple-400 shrink-0" />
+            <span>
+              Time: <strong className="text-neutral-200">{timeTaken}</strong>
+              {generatedAt ? ` at ${generatedAt}` : ""}
+            </span>
+          </div>
+          {tokens && (
+            <div className="flex items-center gap-1 truncate">
+              <FiZap className="text-purple-400 shrink-0" />
+              <span>
+                Tokens: <strong className="text-neutral-200">{tokens}</strong>
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,180 +1,294 @@
 /**
- * PixelIDE Centralized Prompt System & Template Generators
- * Formats high-level prompts and system instructions for AI features.
+ * PixelIDE Centralized Prompt System & Template Generators (Sprint 10)
+ * Formats high-level prompts and system instructions taking structured AI Context objects.
  */
 
 export const SYSTEM_INSTRUCTIONS = {
   CODE_EXPERT:
     "You are PixelIDE AI, a world-class senior software engineer and code reviewer built directly into PixelIDE. Provide precise, actionable, high-quality technical analysis formatted in clean GitHub-flavored Markdown. Use clean code blocks with syntax highlighting.",
   DEBUGGER:
-    "You are PixelIDE AI Debugger. Diagnose software bugs, compilation errors, and runtime stack traces. Explain the root cause clearly and provide exact corrected code snippets.",
+    "You are PixelIDE AI Smart Debugger. Diagnose software bugs, compilation errors, runtime stack traces, and Judge0 output. Explain the root cause clearly and provide exact corrected code snippets.",
   TEACHER:
     "You are PixelIDE AI Mentor. Explain code concepts step-by-step in an intuitive, developer-friendly way suitable for engineers of all skill levels.",
+  TEST_ENGINEER:
+    "You are PixelIDE AI Test Engineer. Generate comprehensive, production-ready unit test suites using the idiomatic testing framework for the target language.",
+  DOCUMENTER:
+    "You are PixelIDE AI Technical Writer. Generate professional inline docstrings and module documentation.",
   INTERVIEW_INTERVIEWER:
     "You are PixelIDE AI Technical Interviewer. Act as an interviewer at a top tech company. Do NOT give full direct solution code immediately unless requested. Give constructive feedback, evaluate time/space complexity, hint at optimizations, and ask follow-up questions to test deep understanding.",
 };
 
 /**
- * AI Code Review Prompt Generator
+ * Smart Debugger Prompt Generator
  */
-export const reviewPrompt = ({ code, language = "javascript" }) => {
-  return {
-    systemInstruction: SYSTEM_INSTRUCTIONS.CODE_EXPERT,
-    prompt: `Please perform a thorough code review for the following ${language} code:
+export const debugPrompt = (context = {}) => {
+  const {
+    language = "javascript",
+    filename = "file",
+    sourceCode = "",
+    compileOutput = "",
+    stderr = "",
+    stdout = "",
+    consoleOutput = "",
+    status = "",
+    exitCode = null,
+  } = context;
 
-\`\`\`${language}
-${code}
-\`\`\`
-
-Analyze the code for:
-1. Potential bugs, edge cases, and logical errors
-2. Performance, time/space complexity improvements
-3. Best practices, readability, and code structure
-4. Security vulnerabilities (if applicable)
-
-Provide a summary, bulleted issues found, and improved refactored code blocks where appropriate.`,
-  };
-};
-
-/**
- * AI Debugger Prompt Generator
- */
-export const debugPrompt = ({ code, language = "javascript", errorOutput = "" }) => {
   return {
     systemInstruction: SYSTEM_INSTRUCTIONS.DEBUGGER,
-    prompt: `The following ${language} code produced an error during execution:
+    prompt: `Analyze and debug the following ${language} code from file "${filename}":
 
 ### Source Code:
 \`\`\`${language}
-${code}
+${sourceCode}
 \`\`\`
 
-### Execution Error Output / Terminal Logs:
-\`\`\`
-${errorOutput || "No explicit console error logged, but code did not behave as expected."}
+### Execution Context & Diagnostic Outputs:
+- **Judge0 Status:** ${status || "N/A"}
+- **Exit Code:** ${exitCode !== null ? exitCode : "N/A"}
+- **Compiler Errors:** ${compileOutput ? compileOutput : "None"}
+- **Runtime Errors (stderr):** ${stderr ? stderr : "None"}
+- **Standard Output (stdout):** ${stdout ? stdout : "None"}
+- **Console Output / Logs:** ${consoleOutput ? consoleOutput : "None"}
+
+Please evaluate this information and return your analysis strictly under the following markdown sections:
+
+## Root Cause
+[Describe the precise underlying bug or cause of failure]
+
+## Explanation
+[Explain why the error occurs in plain, accessible language]
+
+## Affected Line
+[Specify the exact line number(s) or function affected]
+
+## Solution
+[Step-by-step description of how to resolve the issue]
+
+## Corrected Code
+\`\`\`${language}
+[Full working corrected source code]
 \`\`\`
 
-Tasks:
-1. Identify the exact line or logic causing the failure.
-2. Explain the root cause of the error clearly.
-3. Provide the full corrected ${language} code fix.`,
+## Tips to Avoid It
+[Best practice tips and recommendations to avoid similar bugs in the future]`,
   };
 };
 
 /**
  * Explain Code / Selection Prompt Generator
  */
-export const explainPrompt = ({ code, language = "javascript", selectedText = "" }) => {
-  const targetCode = selectedText && selectedText.trim() ? selectedText : code;
-  const contextBlock =
-    selectedText && selectedText.trim()
-      ? `\n### Full File Context:\n\`\`\`${language}\n${code}\n\`\`\`\n`
-      : "";
+export const explainPrompt = (context = {}) => {
+  const {
+    language = "javascript",
+    filename = "file",
+    sourceCode = "",
+    selectedCode = "",
+  } = context;
+
+  const isSelection = Boolean(selectedCode && selectedCode.trim());
+  const targetCode = isSelection ? selectedCode.trim() : sourceCode;
+  const contextHeader = isSelection
+    ? `The user highlighted a specific code snippet inside file "${filename}". Explain ONLY the highlighted block in detail, referencing full file context if needed.`
+    : `The user requested an explanation for the entire file "${filename}".`;
 
   return {
     systemInstruction: SYSTEM_INSTRUCTIONS.TEACHER,
-    prompt: `Please explain the following ${language} code block in detail:
+    prompt: `${contextHeader}
 
-${contextBlock}
-### Code to Explain:
+${isSelection ? `### Full File Context:\n\`\`\`${language}\n${sourceCode}\n\`\`\`\n` : ""}
+### ${isSelection ? "Highlighted Code Selection to Explain:" : "Source Code to Explain:"}
 \`\`\`${language}
 ${targetCode}
 \`\`\`
 
-Cover:
-1. Overview of what this code does
-2. Step-by-step breakdown of core logic and functions
-3. Key variables, data structures, or algorithms utilized`,
+Requirements:
+1. Provide an executive overview of what this ${isSelection ? "code block" : "file"} accomplishes.
+2. Provide a line-by-line or step-by-step breakdown of core logic, functions, variables, and algorithms.
+3. Highlight key data structures, state changes, or API calls.`,
+  };
+};
+
+/**
+ * AI Code Review Prompt Generator
+ */
+export const reviewPrompt = (context = {}) => {
+  const { language = "javascript", filename = "file", sourceCode = "" } = context;
+
+  return {
+    systemInstruction: SYSTEM_INSTRUCTIONS.CODE_EXPERT,
+    prompt: `Perform a comprehensive, professional code review for the file "${filename}" written in ${language}:
+
+\`\`\`${language}
+${sourceCode}
+\`\`\`
+
+Evaluate the code thoroughly and structure your response with these exact markdown sections:
+
+## Overall Score
+[Assign a numerical score out of 10 with a brief summary statement]
+
+## Strengths
+- [Key positive aspects and good patterns]
+
+## Weaknesses
+- [Areas needing improvement or risk areas]
+
+## Readability
+[Assessment of variable naming, structure, formatting, and clarity]
+
+## Performance
+[Evaluation of time and space complexity and potential bottlenecks]
+
+## Security
+[Analysis of potential security risks or vulnerabilities]
+
+## Maintainability
+[Assessment of modularity, extensibility, and technical debt]
+
+## Best Practices
+[Adherence to ${language} idioms and industry standards]
+
+## Suggested Improvements
+\`\`\`${language}
+[Refactored or improved version of the code implementing all recommendations]
+\`\`\``,
   };
 };
 
 /**
  * Optimize Code Prompt Generator
  */
-export const optimizePrompt = ({ code, language = "javascript" }) => {
+export const optimizePrompt = (context = {}) => {
+  const { language = "javascript", filename = "file", sourceCode = "" } = context;
+
   return {
     systemInstruction: SYSTEM_INSTRUCTIONS.CODE_EXPERT,
-    prompt: `Optimize the following ${language} code for maximum performance, efficiency, and clean structure:
+    prompt: `Optimize the following ${language} code from "${filename}" for maximum execution speed, memory efficiency, and structural elegance:
 
 \`\`\`${language}
-${code}
+${sourceCode}
 \`\`\`
 
-Please output:
-1. Analysis of current Big-O time and space complexity
-2. Key bottlenecks and optimization techniques applied
-3. Optimized version of the code in \`\`\`${language}\`\`\` blocks
-4. Expected performance improvements after optimization`,
+Provide your response strictly structured under the following markdown headers:
+
+## Performance Improvements
+- [Detailed list of algorithmic or runtime optimizations]
+
+## Cleaner Structure
+- [Structural and architectural refactorings applied]
+
+## Simplified Logic
+- [Simplifications made to conditions, loops, or data flow]
+
+## Optimized Code
+\`\`\`${language}
+[Complete optimized code implementation]
+\`\`\`
+
+## Why the changes help
+[Clear explanation of the performance gains and Big-O improvements]`,
   };
 };
 
 /**
  * Generate Unit Tests Prompt Generator
  */
-export const testsPrompt = ({ code, language = "javascript" }) => {
+export const testsPrompt = (context = {}) => {
+  const { language = "javascript", filename = "file", sourceCode = "" } = context;
+
+  const testFrameworkMap = {
+    javascript: "Jest / Vitest",
+    python: "pytest",
+    java: "JUnit 5",
+    cpp: "GoogleTest (gtest)",
+    c: "Unity Framework",
+  };
+
+  const framework = testFrameworkMap[language.toLowerCase()] || `${language} standard test framework`;
+
   return {
-    systemInstruction: SYSTEM_INSTRUCTIONS.CODE_EXPERT,
-    prompt: `Generate comprehensive unit test suites for the following ${language} code:
+    systemInstruction: SYSTEM_INSTRUCTIONS.TEST_ENGINEER,
+    prompt: `Generate a comprehensive unit test suite for the following ${language} code from file "${filename}":
 
 \`\`\`${language}
-${code}
+${sourceCode}
 \`\`\`
 
 Requirements:
-1. Cover standard edge cases, null/undefined inputs, and boundary conditions
-2. Use standard test framework syntax appropriate for ${language} (e.g. Jest/Vitest for JS, unittest/pytest for Python, JUnit for Java, GoogleTest/catch2 for C++)
-3. Include clear descriptions for each test case`,
+1. Target Testing Framework: **${framework}**.
+2. Cover happy paths, edge cases, null/invalid inputs, boundary values, and error conditions.
+3. Organize test cases cleanly with descriptive titles and assertion comments.
+4. Output ready-to-run test file code inside a code block.`,
   };
 };
 
 /**
- * Generate Documentation Prompt Generator
+ * Generate Technical Documentation Prompt Generator
  */
-export const documentationPrompt = ({ code, language = "javascript" }) => {
+export const documentationPrompt = (context = {}) => {
+  const { language = "javascript", filename = "file", sourceCode = "" } = context;
+
   return {
-    systemInstruction: SYSTEM_INSTRUCTIONS.CODE_EXPERT,
-    prompt: `Generate comprehensive technical documentation for the following ${language} code:
+    systemInstruction: SYSTEM_INSTRUCTIONS.DOCUMENTER,
+    prompt: `Generate complete, professional technical documentation for the file "${filename}" (${language}):
 
 \`\`\`${language}
-${code}
+${sourceCode}
 \`\`\`
 
-Include:
-1. High-level module / component summary
-2. JSDoc / Docstring inline comments for functions and parameters
-3. API / Function signatures table detailing arguments and return types
-4. Quick usage example`,
+Please organize the documentation with the following sections:
+
+## Function Summaries
+[High-level overview of every function, class, or module in the file]
+
+## Parameters
+[Detailed table or list of parameters, types, and descriptions]
+
+## Returns
+[Return types and descriptions for all functions]
+
+## Examples
+\`\`\`${language}
+[Working usage example demonstrating how to invoke the code]
+\`\`\`
+
+## Edge Cases
+[List of edge cases, exceptions thrown, or boundary constraints to consider]`,
   };
 };
 
 /**
- * Interview Feedback Prompt Generator
+ * Technical Interview Prompt Generator
  */
-export const interviewPrompt = ({
-  code,
-  language = "javascript",
-  problemStatement = "Coding Challenge",
-  userQuestion = "",
-}) => {
+export const interviewPrompt = (context = {}) => {
+  const {
+    language = "javascript",
+    filename = "file",
+    sourceCode = "",
+    problemStatement = "Coding Challenge",
+    userQuestion = "",
+  } = context;
+
   return {
     systemInstruction: SYSTEM_INSTRUCTIONS.INTERVIEW_INTERVIEWER,
-    prompt: `Technical Interview Evaluation:
+    prompt: `Technical Interview Evaluation for file "${filename}":
 
 ### Problem Statement:
 ${problemStatement}
 
-### Candidate's Current Code (${language}):
+### Candidate's Solution (${language}):
 \`\`\`${language}
-${code}
+${sourceCode}
 \`\`\`
 
-### Candidate Input / Response:
+### Candidate Input / Question:
 ${userQuestion || "Please evaluate my solution and provide feedback."}
 
 As an interviewer:
-1. Provide feedback on code correctness and approach.
-2. Evaluate Time and Space complexity.
-3. Highlight potential edge cases or bugs.
-4. Give a guiding hint or follow-up question without writing out the complete code solution immediately.`,
+1. Evaluate code correctness and approach.
+2. Analyze Time and Space Complexity (Big-O).
+3. Identify potential bugs or edge cases.
+4. Provide a constructive hint or follow-up question.`,
   };
 };

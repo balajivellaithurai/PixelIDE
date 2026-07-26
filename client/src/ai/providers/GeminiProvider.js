@@ -32,7 +32,7 @@ export class GeminiProvider extends BaseAIProvider {
     const rawKey = config.apiKey || "";
     const apiKey = String(rawKey).replace(/^["']|["']$/g, "").trim();
 
-    const model = config.model || "gemini-1.5-flash";
+    const model = config.model || "gemini-3.6-flash";
     const temperature = config.temperature !== undefined ? config.temperature : 0.7;
     const maxOutputTokens = config.maxTokens || 4096;
     const timeoutMs = config.timeoutMs || 30000;
@@ -146,7 +146,9 @@ export class GeminiProvider extends BaseAIProvider {
         let errorData = null;
         try {
           errorData = await response.json();
-        } catch (_) {}
+        } catch {
+          // Ignore JSON parse error
+        }
 
         const statusCode = response.status;
         const statusMessage = errorData?.error?.message || response.statusText;

@@ -5,6 +5,7 @@ import useWorkspaceStore from "../../store/workspaceStore";
 import useThemeStore from "../../store/themeStore";
 import { applyMonacoTheme } from "../../utils/themeRegistry";
 import { handleGlobalShortcut } from "../../hooks/useKeyboardShortcuts";
+import monacoService from "../../services/monacoService";
 
 const EditorPanel = () => {
   const { code, language, setCode } = useEditorStore();
@@ -16,6 +17,8 @@ const EditorPanel = () => {
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+
+    monacoService.setEditorInstance(editor);
 
     applyMonacoTheme(monaco, theme);
 

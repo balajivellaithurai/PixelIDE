@@ -118,6 +118,87 @@ app.post('/api/execute', async (req, res) => {
   }
 });
 
+// Gemini AI Proxy Endpoint (Sprint 9 - Secure Backend Proxy)
+app.post('/api/ai/generate', async (req, res) => {
+  const { prompt, systemInstruction, model = 'gemini-3.6-flash', temperature = 0.7, maxTokens = 4096 } = req.body;
+  
+  // Audit Check 1 & 2 & 3 & 5: Prioritize process.env.GEMINI_API_KEY on the backend server
+  const rawApiKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.VITE_GEMINI_API_KEY ||
+    req.headers['x-gemini-api-key'];
+
+  // [DEBUG - Audit Logging] Log key presence on backend
+  console.log(`\n--- [AI Request Audit] Incoming AI Request ---`);
+  console.log(`[DEBUG] Model Requested: "${model}"`);
+  console.log(`[DEBUG] Key Configured: ${rawApiKey ? `YES (Length: ${String(rawApiKey).trim().length})` : 'NO (Missing)'}`);
+
+  if (!rawApiKey) {
+    console.error('[AI Audit Error] Gemini API key is missing on the server.');
+    return res.status(401).json({
+      error: 'Gemini API key is not configured.',
+      details: 'Please set GEMINI_API_KEY in server/.env or environment variables.',
+    });
+  }
+
+  const apiKey = String(rawApiKey).replace(/^["']|["']$/g, '').trim();
+
+  if (!prompt || !prompt.trim()) {
+    return res.status(400).json({ error: 'Prompt is required' });
+  }
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const requestBody = {
+    contents: [
+      {
+        parts: [{ text: prompt }],
+      },
+    ],
+    generationConfig: {
+      temperature,
+      maxOutputTokens: maxTokens,
+    },
+  };
+
+  if (systemInstruction && systemInstruction.trim()) {
+    requestBody.systemInstruction = {
+      parts: [{ text: systemInstruction }],
+    };
+  }
+
+  try {
+    const response = await axios.post(endpoint, requestBody, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    console.log(`[DEBUG - Audit Logging] Gemini API Response HTTP Status: ${response.status}`);
+
+    const candidate = response.data.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      console.warn('[DEBUG - Audit Logging] Candidate content was empty.');
+      return res.status(422).json({ error: 'Gemini API returned an empty response.' });
+    }
+
+    return res.json({ text: text.trim() });
+  } catch (error) {
+    console.error(`\n--- [Error] Gemini AI API Failed ---`);
+    const statusCode = error.response?.status || 500;
+    const message =
+      error.response?.data?.error?.message || error.message || 'Unknown Gemini API error';
+
+    console.error(`[DEBUG - Audit Logging] Failed HTTP Status: ${statusCode}`);
+    console.error(`[DEBUG - Audit Logging] Error Details: ${message}`);
+
+    return res.status(statusCode).json({
+      error: 'Gemini API execution failed.',
+      details: message,
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 PixelIDE Server listening on port ${PORT}`);
 });

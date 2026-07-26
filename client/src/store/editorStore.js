@@ -14,6 +14,16 @@ const useEditorStore = create((set, get) => ({
   code: CODE_SNIPPETS.javascript,
   output: "",
   isLoading: false,
+  lastExecutionResult: {
+    stdout: "",
+    stderr: "",
+    compileOutput: "",
+    status: "",
+    exitCode: null,
+    memory: null,
+    time: null,
+    consoleOutput: "",
+  },
   setLanguage: (language) =>
     set((state) => ({
       language,
@@ -31,9 +41,22 @@ const useEditorStore = create((set, get) => ({
         code,
       });
 
+      const resData = response.data || {};
+      const outputText = resData.output || "Code executed successfully.";
+
       set({
-        output: response.data.output || "Code executed successfully.",
+        output: outputText,
         isLoading: false,
+        lastExecutionResult: {
+          stdout: resData.stdout || "",
+          stderr: resData.stderr || "",
+          compileOutput: resData.compile_output || "",
+          status: resData.status || "Finished",
+          exitCode: resData.exit_code !== undefined ? resData.exit_code : 0,
+          memory: resData.memory || null,
+          time: resData.time || null,
+          consoleOutput: outputText,
+        },
       });
     } catch (error) {
       console.error("Execution error:", error);
@@ -41,7 +64,22 @@ const useEditorStore = create((set, get) => ({
         error.response?.data?.error ||
         error.response?.data?.details ||
         "Execution failed. Ensure the backend server is running on port 5000.";
-      set({ output: `Error: ${errMsg}`, isLoading: false });
+      const errorOutput = `Error: ${errMsg}`;
+
+      set({
+        output: errorOutput,
+        isLoading: false,
+        lastExecutionResult: {
+          stdout: "",
+          stderr: errMsg,
+          compileOutput: error.response?.data?.details || "",
+          status: "Error",
+          exitCode: 1,
+          memory: null,
+          time: null,
+          consoleOutput: errorOutput,
+        },
+      });
     }
   },
 }));

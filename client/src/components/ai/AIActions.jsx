@@ -18,48 +18,48 @@ const AI_ACTIONS_CONFIG = [
     title: "Review Code",
     description: "Analyze code quality and best practices.",
     icon: FiCheckSquare,
-    handler: (code, lang) => aiService.reviewCode(code, lang),
+    handler: () => aiService.reviewCode(),
   },
   {
     id: AIActionType.DEBUG,
     title: "Debug Error",
-    description: "Identify bugs and explain fixes.",
+    description: "Analyze Judge0 errors and suggest fixes.",
     icon: FiTerminal,
-    handler: (code, lang, output) => aiService.debugError(code, lang, output),
+    handler: () => aiService.debugError(),
   },
   {
     id: AIActionType.EXPLAIN,
     title: "Explain Selection",
-    description: "Explain highlighted code.",
+    description: "Explain highlighted snippet or full file.",
     icon: FiHelpCircle,
-    handler: (code, lang) => aiService.explainSelection(code, lang),
+    handler: () => aiService.explainSelection(),
   },
   {
     id: AIActionType.OPTIMIZE,
     title: "Optimize Code",
     description: "Suggest cleaner and faster code.",
     icon: FiZap,
-    handler: (code, lang) => aiService.optimizeCode(code, lang),
+    handler: () => aiService.optimizeCode(),
   },
   {
     id: AIActionType.TESTS,
     title: "Generate Tests",
-    description: "Create unit tests.",
+    description: "Create language-specific unit tests.",
     icon: FiLayers,
-    handler: (code, lang) => aiService.generateTests(code, lang),
+    handler: () => aiService.generateTests(),
   },
   {
     id: AIActionType.DOCS,
     title: "Generate Docs",
-    description: "Generate documentation comments.",
+    description: "Generate technical documentation.",
     icon: FiFileText,
-    handler: (code, lang) => aiService.generateDocs(code, lang),
+    handler: () => aiService.generateDocs(),
   },
 ];
 
 export default function AIActions() {
   const { selectedAction, isLoading, setError } = useAIStore();
-  const { code, language, output } = useEditorStore();
+  const { code } = useEditorStore();
 
   const handleCardClick = async (action) => {
     if (isLoading) return;
@@ -77,9 +77,9 @@ export default function AIActions() {
     }
 
     try {
-      await action.handler(code, language, output);
-    } catch (_) {
-      // Error handled by aiStore
+      await action.handler();
+    } catch {
+      // Error state handled by aiStore
     }
   };
 

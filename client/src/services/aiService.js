@@ -1,14 +1,15 @@
 /**
- * PixelIDE Public AI Service Facade (Sprint 9 - Real Gemini AI Integration)
+ * PixelIDE Public AI Service Facade (Sprint 10 - Context-Aware & Intelligent Debugger)
  * Provides asynchronous methods for all AI features.
- * Connects prompt generators, Zustand AI store, and real AI providers.
- * Components NEVER call Gemini or external AI APIs directly.
+ * Connects prompt generators, Zustand AI store, AI Context Builder, and real AI providers.
+ * Enforces caching, deduplication, retry with context reuse, and error handling.
  */
 
 import useAIStore, { AIActionType } from "../store/aiStore";
 import providerFactory from "../ai/providers/AIProviderFactory";
 import aiConfigManager from "../ai/config/aiConfig";
 import { AIError, AIErrorType } from "../ai/errors/aiErrors";
+import buildAIContext from "./aiContextBuilder";
 import {
   reviewPrompt,
   debugPrompt,
@@ -19,14 +20,34 @@ import {
   interviewPrompt,
 } from "../ai/prompts/promptTemplates";
 
+// Response cache map: cacheKey -> { responseText, metadata, timestamp }
+const contextCache = new Map();
+
 class AIService {
+  /**
+   * Generates a deterministic cache key from an AI Context object.
+   */
+  _getCacheKey(context) {
+    return [
+      context.action,
+      context.language,
+      context.filename,
+      context.selectedCode || "",
+      context.sourceCode || "",
+      context.stderr || "",
+      context.compileOutput || "",
+      context.consoleOutput || "",
+    ].join("::");
+  }
+
   /**
    * Internal helper to execute AI operations across providers, store, and prompts.
    */
-  async _executeAction(actionType, promptData, meta = {}) {
-    // 1. Guard against empty editor requests
-    const targetCode = meta.code || "";
-    if (actionType !== AIActionType.INTERVIEW && (!targetCode || !targetCode.trim())) {
+  async _executeAction(actionType, context, promptGenerator) {
+    const startTime = performance.now();
+
+    // 1. Guard against empty source code input
+    if (actionType !== AIActionType.INTERVIEW && (!context.sourceCode || !context.sourceCode.trim())) {
       const emptyError = new AIError(
         AIErrorType.EMPTY_REQUEST,
         "Start writing code before using AI."
@@ -35,11 +56,34 @@ class AIService {
       throw emptyError;
     }
 
+    // 2. Check Cache for Identical Context
+    const cacheKey = this._getCacheKey(context);
+    if (contextCache.has(cacheKey)) {
+      console.log(`[AIService Cache Hit] Returning cached response for action: ${actionType}`);
+      const cached = contextCache.get(cacheKey);
+
+      const { startAction, setResponse } = useAIStore.getState();
+      const { requestId } = startAction(actionType, { actionType, context });
+
+      setResponse(requestId, cached.responseText, {
+        context,
+        durationMs: 50, // instant from cache
+        estimatedTokens: cached.estimatedTokens,
+        fromCache: true,
+      });
+
+      return cached.responseText;
+    }
+
+    // 3. Prompt Generation
+    const promptData = promptGenerator(context);
+
+    // 4. Initialize Store Action State
     const { startAction, setResponse, setError } = useAIStore.getState();
     const { requestId, signal } = startAction(actionType, {
       actionType,
+      context,
       promptData,
-      meta,
     });
 
     try {
@@ -53,10 +97,22 @@ class AIService {
         signal,
       });
 
+      const endTime = performance.now();
+      const durationMs = Math.round(endTime - startTime);
+      const estimatedTokens = Math.ceil(responseText.length / 4);
+
+      // Save to Cache
+      contextCache.set(cacheKey, {
+        responseText,
+        estimatedTokens,
+        timestamp: Date.now(),
+      });
+
+      // Update Store
       setResponse(requestId, responseText, {
-        language: meta.language || "javascript",
-        actionType,
-        ...meta,
+        context,
+        durationMs,
+        estimatedTokens,
       });
 
       return responseText;
@@ -72,105 +128,97 @@ class AIService {
   }
 
   /**
-   * Performs real AI Code Review.
-   * @param {string} code - Source code to review
-   * @param {string} [language='javascript'] - Programming language
+   * Performs AI Code Review.
+   * @param {Object} [overrides={}] - Optional context overrides
    */
-  async reviewCode(code, language = "javascript") {
-    const promptData = reviewPrompt({ code, language });
-    return this._executeAction(AIActionType.REVIEW, promptData, { code, language });
+  async reviewCode(overrides = {}) {
+    const context = buildAIContext(AIActionType.REVIEW, overrides);
+    return this._executeAction(AIActionType.REVIEW, context, reviewPrompt);
   }
 
   /**
-   * Performs real AI Error Debugging.
-   * @param {string} code - Source code
-   * @param {string} [language='javascript'] - Programming language
-   * @param {string} [errorOutput=''] - Console or compiler error text
+   * Performs AI Error Debugging using Judge0 & Compiler output.
+   * @param {Object} [overrides={}] - Optional context overrides
    */
-  async debugError(code, language = "javascript", errorOutput = "") {
-    const promptData = debugPrompt({ code, language, errorOutput });
-    return this._executeAction(AIActionType.DEBUG, promptData, { code, language, errorOutput });
+  async debugError(overrides = {}) {
+    const context = buildAIContext(AIActionType.DEBUG, overrides);
+    return this._executeAction(AIActionType.DEBUG, context, debugPrompt);
   }
 
   /**
    * Explains full file code or highlighted text selection.
-   * @param {string} code - Source code
-   * @param {string} [language='javascript'] - Programming language
-   * @param {string} [selectedText=''] - Highlighted selection snippet
+   * @param {Object} [overrides={}] - Optional context overrides
    */
-  async explainSelection(code, language = "javascript", selectedText = "") {
-    const promptData = explainPrompt({ code, language, selectedText });
-    return this._executeAction(AIActionType.EXPLAIN, promptData, { code, language, selectedText });
+  async explainSelection(overrides = {}) {
+    const context = buildAIContext(AIActionType.EXPLAIN, overrides);
+    return this._executeAction(AIActionType.EXPLAIN, context, explainPrompt);
   }
 
   /**
    * Optimizes code for time/space performance.
-   * @param {string} code - Source code
-   * @param {string} [language='javascript'] - Programming language
+   * @param {Object} [overrides={}] - Optional context overrides
    */
-  async optimizeCode(code, language = "javascript") {
-    const promptData = optimizePrompt({ code, language });
-    return this._executeAction(AIActionType.OPTIMIZE, promptData, { code, language });
+  async optimizeCode(overrides = {}) {
+    const context = buildAIContext(AIActionType.OPTIMIZE, overrides);
+    return this._executeAction(AIActionType.OPTIMIZE, context, optimizePrompt);
   }
 
   /**
    * Generates unit tests for code.
-   * @param {string} code - Source code
-   * @param {string} [language='javascript'] - Programming language
+   * @param {Object} [overrides={}] - Optional context overrides
    */
-  async generateTests(code, language = "javascript") {
-    const promptData = testsPrompt({ code, language });
-    return this._executeAction(AIActionType.TESTS, promptData, { code, language });
+  async generateTests(overrides = {}) {
+    const context = buildAIContext(AIActionType.TESTS, overrides);
+    return this._executeAction(AIActionType.TESTS, context, testsPrompt);
   }
 
   /**
    * Generates technical documentation & docstrings.
-   * @param {string} code - Source code
-   * @param {string} [language='javascript'] - Programming language
+   * @param {Object} [overrides={}] - Optional context overrides
    */
-  async generateDocs(code, language = "javascript") {
-    const promptData = documentationPrompt({ code, language });
-    return this._executeAction(AIActionType.DOCS, promptData, { code, language });
+  async generateDocs(overrides = {}) {
+    const context = buildAIContext(AIActionType.DOCS, overrides);
+    return this._executeAction(AIActionType.DOCS, context, documentationPrompt);
   }
 
   /**
    * Evaluates code for Technical Interview Mode.
-   * @param {string} code - Solution code
-   * @param {string} [language='javascript'] - Programming language
-   * @param {string} [problemStatement='Coding Challenge'] - Problem description
-   * @param {string} [userQuestion=''] - Candidate message
+   * @param {Object} [overrides={}] - Optional context overrides
    */
-  async interviewFeedback(
-    code,
-    language = "javascript",
-    problemStatement = "Coding Challenge",
-    userQuestion = ""
-  ) {
-    const promptData = interviewPrompt({
-      code,
-      language,
-      problemStatement,
-      userQuestion,
-    });
-    return this._executeAction(AIActionType.INTERVIEW, promptData, {
-      code,
-      language,
-      problemStatement,
-      userQuestion,
-    });
+  async interviewFeedback(overrides = {}) {
+    const context = buildAIContext(AIActionType.INTERVIEW, overrides);
+    return this._executeAction(AIActionType.INTERVIEW, context, interviewPrompt);
   }
 
   /**
-   * Retries the previous AI request.
+   * Retries the previous AI request reusing the previous AI context.
    */
   async retryLastRequest() {
-    const lastRequest = useAIStore.getState().lastRequest;
-    if (!lastRequest) return;
-    return this._executeAction(
-      lastRequest.actionType,
-      lastRequest.promptData,
-      lastRequest.meta
-    );
+    const { lastContext } = useAIStore.getState();
+    if (!lastContext) {
+      console.warn("No prior AI context available for retry.");
+      return;
+    }
+
+    const actionPromptMap = {
+      [AIActionType.REVIEW]: reviewPrompt,
+      [AIActionType.DEBUG]: debugPrompt,
+      [AIActionType.EXPLAIN]: explainPrompt,
+      [AIActionType.OPTIMIZE]: optimizePrompt,
+      [AIActionType.TESTS]: testsPrompt,
+      [AIActionType.DOCS]: documentationPrompt,
+      [AIActionType.INTERVIEW]: interviewPrompt,
+    };
+
+    const promptGenerator = actionPromptMap[lastContext.action] || reviewPrompt;
+    return this._executeAction(lastContext.action, lastContext, promptGenerator);
+  }
+
+  /**
+   * Clears the response cache.
+   */
+  clearCache() {
+    contextCache.clear();
   }
 
   /**

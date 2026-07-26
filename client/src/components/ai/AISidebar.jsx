@@ -4,10 +4,11 @@ import AIActions from "./AIActions";
 import AILoading from "./AILoading";
 import AIResponse from "./AIResponse";
 import AIEmptyState from "./AIEmptyState";
+import AIHistory from "./AIHistory";
 import useAIStore from "../../store/aiStore";
 
 export default function AISidebar() {
-  const { isOpen, isLoading, response } = useAIStore();
+  const { isOpen, isLoading, response, showHistoryView } = useAIStore();
 
   return (
     <AnimatePresence>
@@ -28,24 +29,30 @@ export default function AISidebar() {
 
           {/* Scrollable Main Body */}
           <div className="flex-1 overflow-y-auto flex flex-col">
-            {/* Actions Grid */}
-            <AIActions />
+            {showHistoryView ? (
+              <AIHistory />
+            ) : (
+              <>
+                {/* Actions Grid */}
+                <AIActions />
 
-            {/* Divider */}
-            <div className="px-4 my-2">
-              <div className="border-t border-neutral-800" />
-            </div>
+                {/* Divider */}
+                <div className="px-4 my-2">
+                  <div className="border-t border-neutral-800" />
+                </div>
 
-            {/* Response / Loading / Empty State Panel */}
-            <div className="flex-1 flex flex-col min-h-[220px]">
-              {isLoading ? (
-                <AILoading />
-              ) : response ? (
-                <AIResponse />
-              ) : (
-                <AIEmptyState />
-              )}
-            </div>
+                {/* Response / Loading / Empty State Panel */}
+                <div className="flex-1 flex flex-col min-h-[220px]">
+                  {isLoading ? (
+                    <AILoading />
+                  ) : response ? (
+                    <AIResponse />
+                  ) : (
+                    <AIEmptyState />
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </motion.aside>
       )}
