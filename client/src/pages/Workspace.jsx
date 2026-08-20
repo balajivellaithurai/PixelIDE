@@ -6,6 +6,7 @@ import Console from "../components/layout/Console";
 import AISidebar from "../components/ai/AISidebar";
 import AIToggleButton from "../components/ai/AIToggleButton";
 import CommandPalette from "../components/ide/CommandPalette";
+import GitStatusBar from "../components/git/GitStatusBar";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 
 const Workspace = () => {
@@ -32,6 +33,9 @@ const Workspace = () => {
         <AIToggleButton />
         <AISidebar />
       </div>
+
+      {/* Git Source Control Bottom Status Bar */}
+      <GitStatusBar />
 
       {/* Terminal / Console Panel */}
       <Console />

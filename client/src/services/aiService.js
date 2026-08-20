@@ -10,6 +10,7 @@ import providerFactory from "../ai/providers/AIProviderFactory";
 import aiConfigManager from "../ai/config/aiConfig";
 import { AIError, AIErrorType } from "../ai/errors/aiErrors";
 import buildAIContext from "./aiContextBuilder";
+import gitService from "./gitService";
 import {
   reviewPrompt,
   debugPrompt,
@@ -42,6 +43,7 @@ class AIService {
       context.stderr || "",
       context.compileOutput || "",
       context.consoleOutput || "",
+      context.stagedDiff || "",
     ].join("::");
   }
 
@@ -52,7 +54,14 @@ class AIService {
     const startTime = performance.now();
 
     // 1. Guard against empty source code input
-    if (actionType !== AIActionType.INTERVIEW && (!context.sourceCode || !context.sourceCode.trim())) {
+    const bypassEmptyCheck = [
+      AIActionType.INTERVIEW,
+      AIActionType.COMMIT_MESSAGE,
+      AIActionType.PROJECT_SUMMARY,
+      AIActionType.CHAT,
+    ].includes(actionType);
+
+    if (!bypassEmptyCheck && (!context.sourceCode || !context.sourceCode.trim())) {
       const emptyError = new AIError(
         AIErrorType.EMPTY_REQUEST,
         "Start writing code before using AI."
@@ -218,7 +227,14 @@ class AIService {
    * @param {Object} [overrides={}] - Optional context overrides
    */
   async generateCommitMessage(overrides = {}) {
-    const context = buildAIContext(AIActionType.COMMIT_MESSAGE, overrides);
+    let stagedDiff = "";
+    try {
+      const diffRes = await gitService.getStagedDiff();
+      stagedDiff = diffRes?.diff || "";
+    } catch (e) {
+      console.warn("[AIService] Failed to fetch staged diff for commit message generation:", e);
+    }
+    const context = buildAIContext(AIActionType.COMMIT_MESSAGE, { stagedDiff, ...overrides });
     return this._executeAction(AIActionType.COMMIT_MESSAGE, context, commitMessagePrompt);
   }
 

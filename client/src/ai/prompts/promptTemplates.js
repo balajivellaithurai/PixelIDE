@@ -379,21 +379,21 @@ Please structure your response strictly under these exact headers:
  * AI Commit Message Generator Prompt Generator (Feature 5)
  */
 export const commitMessagePrompt = (context = {}) => {
-  const { files = [], projectTree = "", recentlyEditedFiles = [] } = context;
+  const { stagedDiff = "", files = [], projectTree = "", recentlyEditedFiles = [] } = context;
 
   const filesSummary = files
     .map((f) => `- ${f.name} (${f.language}, ${f.contentLength} bytes)`)
     .join("\n");
 
+  const diffBlock = stagedDiff && stagedDiff.trim()
+    ? `### Staged Git Diff:\n\`\`\`diff\n${stagedDiff}\n\`\`\`\n`
+    : `### Workspace Project Files:\n${filesSummary || projectTree}\n\n### Recently Modified Files:\n${recentlyEditedFiles.join(", ") || "Active file edits"}\n`;
+
   return {
     systemInstruction: SYSTEM_INSTRUCTIONS.CODE_EXPERT,
-    prompt: `Analyze the current workspace state and generate professional Git commit messages:
+    prompt: `Analyze the staged Git changes and generate a professional Conventional Commit message:
 
-### Workspace Project Files:
-${filesSummary || projectTree}
-
-### Recently Modified Files:
-${recentlyEditedFiles.join(", ") || "Active file edits"}
+${diffBlock}
 
 Provide structured git commit messages under the following markdown headers:
 
@@ -401,10 +401,10 @@ Provide structured git commit messages under the following markdown headers:
 \`\`\`
 [type]([scope]): [short imperative summary in lowercase]
 \`\`\`
-*(Example: feat(workspace): add multi-file state management)*
+*(Example: feat(git): add stage and commit support)*
 
 ## Short Version
-[Single concise sentence summarizing the main workspace change]
+[Single concise sentence summarizing the main change]
 
 ## Detailed Version
 [Comprehensive multi-paragraph commit message body suitable for pull request descriptions]

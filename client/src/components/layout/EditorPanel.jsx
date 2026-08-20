@@ -4,17 +4,20 @@ import useEditorStore from "../../store/editorStore";
 import useWorkspaceStore from "../../store/workspaceStore";
 import useThemeStore from "../../store/themeStore";
 import useIDEStore from "../../store/ideStore";
+import useGitStore from "../../store/gitStore";
 import { applyMonacoTheme } from "../../utils/themeRegistry";
 import { handleGlobalShortcut } from "../../hooks/useKeyboardShortcuts";
 import monacoService from "../../services/monacoService";
 import { parseFileOutline } from "../../services/outlineParser";
 import BreadcrumbBar from "../ide/BreadcrumbBar";
+import GitDiffViewer from "../git/GitDiffViewer";
 
 const EditorPanel = () => {
   const { code, language, setCode } = useEditorStore();
   const { activeFileId, updateFileContent, files } = useWorkspaceStore();
   const { theme } = useThemeStore();
   const { markFileUnsaved, setCurrentSymbol } = useIDEStore();
+  const { activeDiffFile } = useGitStore();
 
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
@@ -82,6 +85,10 @@ const EditorPanel = () => {
       markFileUnsaved(activeFileId);
     }
   };
+
+  if (activeDiffFile) {
+    return <GitDiffViewer />;
+  }
 
   return (
     <div

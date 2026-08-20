@@ -1,7 +1,8 @@
-import { FiFolder, FiSearch, FiList, FiChevronLeft } from "react-icons/fi";
+import { FiFolder, FiSearch, FiList, FiGitBranch, FiChevronLeft } from "react-icons/fi";
 import FileExplorer from "./FileExplorer";
 import GlobalSearchPanel from "../ide/GlobalSearchPanel";
 import OutlinePanel from "../ide/OutlinePanel";
+import GitPanel from "../git/GitPanel";
 import useIDEStore from "../../store/ideStore";
 
 export default function Sidebar() {
@@ -32,6 +33,18 @@ export default function Sidebar() {
           title="File Explorer"
         >
           <FiFolder className="text-base" />
+        </button>
+
+        <button
+          onClick={() => setActiveSidebarTab("git")}
+          className={`p-2 rounded-lg transition cursor-pointer ${
+            activeSidebarTab === "git"
+              ? "bg-purple-600/30 text-purple-300 border border-purple-500/40"
+              : "text-neutral-400 hover:text-white"
+          }`}
+          title="Source Control (Git)"
+        >
+          <FiGitBranch className="text-base" />
         </button>
 
         <button
@@ -87,6 +100,19 @@ export default function Sidebar() {
           </button>
 
           <button
+            onClick={() => setActiveSidebarTab("git")}
+            className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 text-xs ${
+              activeSidebarTab === "git"
+                ? "bg-purple-600/30 text-purple-300 border border-purple-500/40 font-semibold"
+                : "text-neutral-400 hover:text-white"
+            }`}
+            title="Source Control (Git)"
+          >
+            <FiGitBranch className="text-xs" />
+            <span>Git</span>
+          </button>
+
+          <button
             onClick={() => setActiveSidebarTab("search")}
             className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 text-xs ${
               activeSidebarTab === "search"
@@ -124,7 +150,9 @@ export default function Sidebar() {
 
       {/* Main View Area */}
       <div className="flex-1 p-3.5 overflow-y-auto">
-        {activeSidebarTab === "search" ? (
+        {activeSidebarTab === "git" ? (
+          <GitPanel />
+        ) : activeSidebarTab === "search" ? (
           <GlobalSearchPanel />
         ) : activeSidebarTab === "outline" ? (
           <OutlinePanel />
