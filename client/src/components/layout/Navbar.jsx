@@ -1,14 +1,16 @@
 import useEditorStore from "../../store/editorStore";
 import useWorkspaceStore from "../../store/workspaceStore";
 import useThemeStore, { THEMES } from "../../store/themeStore";
+import useAIStore from "../../store/aiStore";
 import ProjectSaveIndicator from "../project/ProjectSaveIndicator";
-import { FiFolder, FiSave } from "react-icons/fi";
+import { FiFolder, FiSave, FiSliders } from "react-icons/fi";
 import toast from "react-hot-toast";
 
 const Navbar = () => {
   const { language, setLanguage, runCode, isLoading } = useEditorStore();
   const { currentProject, saveCurrentProject, setShowProjectModal } = useWorkspaceStore();
   const { theme, setTheme } = useThemeStore();
+  const { openSettingsModal } = useAIStore();
 
   const handleSaveClick = async () => {
     try {
@@ -50,6 +52,20 @@ const Navbar = () => {
 
       {/* Controls */}
       <div className="flex items-center gap-3 font-sans">
+        {/* AI Settings Trigger */}
+        <button
+          onClick={openSettingsModal}
+          style={{
+            backgroundColor: "var(--bg-dropdown)",
+            color: "var(--text-main)",
+            borderColor: "var(--border-color)",
+          }}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1.5 cursor-pointer hover:opacity-80"
+          title="AI Superpowers Settings"
+        >
+          <FiSliders className="text-purple-400" />
+          <span>AI Settings</span>
+        </button>
         {/* Projects Manager Modal Trigger */}
         <button
           onClick={() => setShowProjectModal(true)}

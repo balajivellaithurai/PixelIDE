@@ -24,7 +24,11 @@ import {
   commitMessagePrompt,
   workspaceSummaryPrompt,
   chatPrompt,
+  functionExplainPrompt,
+  commentsPrompt,
+  readmePrompt,
 } from "../ai/prompts/promptTemplates";
+import detectEnclosingFunction from "./functionDetector";
 
 // Response cache map: cacheKey -> { responseText, metadata, timestamp }
 const contextCache = new Map();
@@ -205,12 +209,129 @@ class AIService {
   }
 
   /**
+   * Explains current function surrounding cursor or highlighted text.
+   * @param {Object} [overrides={}] - Optional context overrides
+   */
+  async explainFunction(overrides = {}) {
+    const context = buildAIContext(AIActionType.EXPLAIN, overrides);
+    const { sourceCode, cursorLine, language, filename, selectedCode } = context;
+
+    useAIStore.getState().openSidebar();
+
+    if (selectedCode && selectedCode.trim()) {
+      return this._executeAction(AIActionType.EXPLAIN, context, explainPrompt);
+    }
+
+    const funcDetails = detectEnclosingFunction(sourceCode, cursorLine, language);
+    const funcContext = {
+      ...context,
+      functionCode: funcDetails.code,
+      functionName: funcDetails.name,
+      filename,
+      language,
+    };
+
+    return this._executeAction(AIActionType.EXPLAIN, funcContext, functionExplainPrompt);
+  }
+
+  /**
+   * Generates documentation comments for code and triggers preview modal.
+   * @param {Object} [overrides={}] - Optional context overrides
+   */
+  async generateComments(overrides = {}) {
+    const context = buildAIContext(AIActionType.DOCS, overrides);
+    const { sourceCode, selectedCode, cursorLine, language, filename } = context;
+
+    let targetCode = selectedCode && selectedCode.trim() ? selectedCode : "";
+    if (!targetCode) {
+      const funcDetails = detectEnclosingFunction(sourceCode, cursorLine, language);
+      targetCode = funcDetails.code || sourceCode;
+    }
+
+    const responseText = await this._executeAction(
+      AIActionType.DOCS,
+      { ...context, targetCode },
+      commentsPrompt
+    );
+
+    // Extract commented code block from response
+    const codeMatch = responseText.match(/```[a-z]*\n([\s\S]*?)\n```/i);
+    const commentedCode = codeMatch ? codeMatch[1].trim() : responseText;
+
+    useAIStore.getState().openCommentModal({
+      originalCode: targetCode,
+      commentedCode,
+      filename,
+      language,
+      fullSource: sourceCode,
+      isSelection: Boolean(selectedCode && selectedCode.trim()),
+    });
+
+    return responseText;
+  }
+
+  /**
+   * Refactors code and presents Monaco Diff Editor preview for user approval.
+   * @param {Object} [overrides={}] - Optional context overrides
+   */
+  async refactorCodeWithDiff(overrides = {}) {
+    const context = buildAIContext(AIActionType.REFACTOR, overrides);
+    const { sourceCode, filename, language } = context;
+
+    const responseText = await this._executeAction(AIActionType.REFACTOR, context, refactorPrompt);
+
+    // Extract refactored code block
+    let refactoredCode = "";
+    const refactoredSectionMatch = responseText.match(/## Refactored Code\s*```[a-z]*\n([\s\S]*?)\n```/i);
+    if (refactoredSectionMatch) {
+      refactoredCode = refactoredSectionMatch[1].trim();
+    } else {
+      const codeMatches = [...responseText.matchAll(/```[a-z]*\n([\s\S]*?)\n```/gi)];
+      if (codeMatches.length > 0) {
+        refactoredCode = codeMatches[codeMatches.length - 1][1].trim();
+      } else {
+        refactoredCode = responseText;
+      }
+    }
+
+    useAIStore.getState().openRefactorModal({
+      originalCode: sourceCode,
+      refactoredCode,
+      filename,
+      language,
+    });
+
+    return responseText;
+  }
+
+  /**
+   * Analyzes workspace and generates professional README.md with preview modal.
+   * @param {Object} [overrides={}] - Optional context overrides
+   */
+  async generateReadme(overrides = {}) {
+    const context = buildAIContext(AIActionType.PROJECT_SUMMARY, overrides);
+    const responseText = await this._executeAction(AIActionType.PROJECT_SUMMARY, context, readmePrompt);
+
+    // Clean up code block if wrapped
+    const cleanedReadme = responseText
+      .replace(/^```markdown\n/i, "")
+      .replace(/^```md\n/i, "")
+      .replace(/\n```$/i, "");
+
+    useAIStore.getState().openReadmeModal({
+      content: cleanedReadme,
+      repoName: context.filename ? context.filename.split(".")[0] : "Pix Project",
+    });
+
+    return cleanedReadme;
+  }
+
+  /**
    * Refactors code for readability, architecture, and naming.
    * @param {Object} [overrides={}] - Optional context overrides
    */
   async refactorCode(overrides = {}) {
-    const context = buildAIContext(AIActionType.REFACTOR, overrides);
-    return this._executeAction(AIActionType.REFACTOR, context, refactorPrompt);
+    return this.refactorCodeWithDiff(overrides);
   }
 
   /**

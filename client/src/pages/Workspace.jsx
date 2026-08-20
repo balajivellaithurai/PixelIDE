@@ -9,10 +9,14 @@ import CommandPalette from "../components/ide/CommandPalette";
 import GitStatusBar from "../components/git/GitStatusBar";
 import ProjectManagerModal from "../components/project/ProjectManagerModal";
 import UnsavedChangesModal from "../components/project/UnsavedChangesModal";
+import AIRefactorDiffModal from "../components/ai/AIRefactorDiffModal";
+import CommentPreviewModal from "../components/ai/CommentPreviewModal";
+import ReadMePreviewModal from "../components/ai/ReadMePreviewModal";
+import AISettingsModal from "../components/ai/AISettingsModal";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 
 const Workspace = () => {
-  // Activate global keyboard shortcut system (Ctrl+S, Ctrl+O, Ctrl+Enter, Ctrl+Shift+P, Ctrl+Shift+F)
+  // Activate global keyboard shortcut system (Ctrl+S, Ctrl+O, Ctrl+Enter, Ctrl+Shift+P, Ctrl+Shift+F, Ctrl+Shift+E/X/R/T/D/M)
   useKeyboardShortcuts();
 
   return (
@@ -50,6 +54,12 @@ const Workspace = () => {
 
       {/* Unsaved Changes Confirmation Modal */}
       <UnsavedChangesModal />
+
+      {/* Sprint 14 AI Modals */}
+      <AIRefactorDiffModal />
+      <CommentPreviewModal />
+      <ReadMePreviewModal />
+      <AISettingsModal />
     </div>
   );
 };

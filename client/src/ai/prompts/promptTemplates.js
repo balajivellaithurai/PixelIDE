@@ -500,3 +500,166 @@ ${recentConversation}
 Answer the user's request comprehensively based on the full workspace context provided.`,
   };
 };
+
+/**
+ * AI Inline Code Completion Prompt Generator (Sprint 14)
+ */
+export const inlineCompletionPrompt = (context = {}) => {
+  const {
+    prefix = "",
+    suffix = "",
+    language = "javascript",
+    filename = "file",
+  } = context;
+
+  return {
+    systemInstruction:
+      "You are Pix AI Inline Completion Engine. Provide exact code completion snippets that continue directly from where the cursor left off. Return ONLY the raw code text snippet to be inserted at the cursor. Do NOT wrap in markdown code blocks, backticks, or write explanations.",
+    prompt: `File: "${filename}" (${language})
+
+Code before cursor:
+${prefix}
+
+Code after cursor:
+${suffix}
+
+Provide the next lines/tokens of code to insert at the cursor. Return strictly raw code text only.`,
+  };
+};
+
+/**
+ * AI Function Explanation Prompt Generator (Sprint 14)
+ */
+export const functionExplainPrompt = (context = {}) => {
+  const {
+    functionCode = "",
+    functionName = "",
+    language = "javascript",
+    filename = "file",
+  } = context;
+
+  return {
+    systemInstruction: SYSTEM_INSTRUCTIONS.TEACHER,
+    prompt: `Explain the function "${functionName || "surrounding function"}" in file "${filename}" (${language}):
+
+\`\`\`${language}
+${functionCode}
+\`\`\`
+
+Structure your response strictly under the following markdown headers:
+
+## Purpose
+[High-level summary of what this function accomplishes]
+
+## Parameters
+[Detailed description of inputs, parameters, and types]
+
+## Return Value
+[Description of return values and output types]
+
+## Logic & Implementation
+[Step-by-step breakdown of algorithm, loops, conditionals, and data transformations]
+
+## Edge Cases & Constraints
+[Potential edge cases, invalid inputs, boundary conditions, or exception handling]`,
+  };
+};
+
+/**
+ * AI Comment & Documentation Generator Prompt Generator (Sprint 14)
+ */
+export const commentsPrompt = (context = {}) => {
+  const {
+    targetCode = "",
+    language = "javascript",
+    filename = "file",
+  } = context;
+
+  return {
+    systemInstruction: SYSTEM_INSTRUCTIONS.DOCUMENTER,
+    prompt: `Add comprehensive, professional inline comments and docstrings (e.g. JSDoc, docstrings, or language-idiomatic comments) to the following code snippet from "${filename}" (${language}):
+
+\`\`\`${language}
+${targetCode}
+\`\`\`
+
+Requirements:
+1. Retain exact executable logic, variable names, and code structure.
+2. Add detailed docstrings for functions/methods detailing parameters, return types, and purpose.
+3. Add explanatory inline comments for non-trivial logic blocks.
+4. Output your result under the following markdown sections:
+
+## Explanation
+[Brief summary of comments added]
+
+## Commented Code
+\`\`\`${language}
+[Complete code with added documentation comments]
+\`\`\``,
+  };
+};
+
+/**
+ * AI README Generator Prompt Generator (Sprint 14)
+ */
+export const readmePrompt = (context = {}) => {
+  const {
+    files = [],
+    projectTree = "",
+    gitBranch = "main",
+    repoName = "Pix Project",
+  } = context;
+
+  const fileSummaries = files
+    .map((f) => `- **${f.name}** (${f.language || "text"}): ${f.content ? f.content.slice(0, 150).replace(/\n/g, " ") : "Empty file"}`)
+    .join("\n");
+
+  return {
+    systemInstruction: SYSTEM_INSTRUCTIONS.CODE_EXPERT,
+    prompt: `Analyze this workspace project and generate a professional, high-quality GitHub-style README.md file:
+
+### Project Information:
+- **Project Name:** ${repoName}
+- **Git Branch:** ${gitBranch}
+- **File Structure:**
+${projectTree}
+
+### Key Workspace Files:
+${fileSummaries}
+
+Generate a complete, beautiful README.md with the following exact markdown headers:
+
+# ${repoName}
+
+## Description
+[Comprehensive overview of the project, its goals, and architecture]
+
+## Features
+- [List of core features and capabilities]
+
+## Tech Stack
+- [Languages, frameworks, tools, and libraries detected]
+
+## Installation
+\`\`\`bash
+[Step-by-step installation instructions]
+\`\`\`
+
+## Usage
+\`\`\`bash
+[How to run and use the project]
+\`\`\`
+
+## Project Structure
+\`\`\`
+${projectTree}
+\`\`\`
+
+## AI Features
+- [Description of integrated AI superpower capabilities in Pix]
+
+## Contributing
+[Guidance for contributors]`,
+  };
+};
+

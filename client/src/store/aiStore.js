@@ -55,6 +55,32 @@ const useAIStore = create((set, get) => ({
   lastRequest: null, // Tracks last execution payload for Retry functionality
   lastContext: null, // Context object of last AI request
   history: [],
+  // AI Settings State (Sprint 14)
+  aiSettings: (() => {
+    try {
+      const saved = localStorage.getItem("pix_ai_settings");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      aiCompletionEnabled: true,
+      inlineSuggestionsEnabled: true,
+      completionDelay: 300,
+      aiModel: "gemini-3.6-flash",
+    };
+  })(),
+
+  // Sprint 14 Modals & Preview States
+  showRefactorModal: false,
+  refactorPreviewData: null, // { originalCode, refactoredCode, filename, language }
+
+  showCommentModal: false,
+  commentPreviewData: null, // { originalCode, commentedCode, filename, language }
+
+  showReadmeModal: false,
+  readmePreviewData: null, // { content, repoName }
+
+  showSettingsModal: false,
+
   provider: aiConfigManager.getProvider(),
   model: aiConfigManager.getModel(),
   temperature: aiConfigManager.getTemperature(),
@@ -264,6 +290,35 @@ const useAIStore = create((set, get) => ({
    * Clears request history.
    */
   clearHistory: () => set({ history: [] }),
+
+  /**
+   * Updates AI Settings and persists to localStorage.
+   */
+  setAISettings: (newSettings) => {
+    set((state) => {
+      const updated = { ...state.aiSettings, ...newSettings };
+      try {
+        localStorage.setItem("pix_ai_settings", JSON.stringify(updated));
+      } catch (e) {
+        console.warn("Failed to persist AI settings to localStorage:", e);
+      }
+      aiConfigManager.updateConfig({ model: updated.aiModel });
+      return { aiSettings: updated, model: updated.aiModel };
+    });
+  },
+
+  // Modal Actions
+  openRefactorModal: (data) => set({ showRefactorModal: true, refactorPreviewData: data }),
+  closeRefactorModal: () => set({ showRefactorModal: false, refactorPreviewData: null }),
+
+  openCommentModal: (data) => set({ showCommentModal: true, commentPreviewData: data }),
+  closeCommentModal: () => set({ showCommentModal: false, commentPreviewData: null }),
+
+  openReadmeModal: (data) => set({ showReadmeModal: true, readmePreviewData: data }),
+  closeReadmeModal: () => set({ showReadmeModal: false, readmePreviewData: null }),
+
+  openSettingsModal: () => set({ showSettingsModal: true }),
+  closeSettingsModal: () => set({ showSettingsModal: false }),
 
   /**
    * Updates AI Provider configuration dynamically at runtime.

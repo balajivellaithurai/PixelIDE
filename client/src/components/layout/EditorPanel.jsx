@@ -9,8 +9,11 @@ import { applyMonacoTheme } from "../../utils/themeRegistry";
 import { handleGlobalShortcut } from "../../hooks/useKeyboardShortcuts";
 import monacoService from "../../services/monacoService";
 import { parseFileOutline } from "../../services/outlineParser";
+import { registerAIInlineCompletionProvider } from "../../services/aiCompletionProvider";
+import aiService from "../../services/aiService";
 import BreadcrumbBar from "../ide/BreadcrumbBar";
 import GitDiffViewer from "../git/GitDiffViewer";
+import AIActionMenu from "../ai/AIActionMenu";
 
 const EditorPanel = () => {
   const { code, language, setCode } = useEditorStore();
@@ -30,6 +33,42 @@ const EditorPanel = () => {
 
     monacoService.setEditorInstance(editor);
     applyMonacoTheme(monaco, theme);
+
+    // Register Monaco AI Inline Completion Provider
+    registerAIInlineCompletionProvider(monaco);
+
+    // Context Menu AI Actions in Monaco Editor
+    editor.addAction({
+      id: "pix.ai.explain",
+      label: "✨ AI: Explain Function / Selection",
+      contextMenuGroupId: "navigation",
+      contextMenuOrder: 1,
+      run: () => aiService.explainFunction(),
+    });
+
+    editor.addAction({
+      id: "pix.ai.refactor",
+      label: "✨ AI: Refactor (Diff Preview)",
+      contextMenuGroupId: "navigation",
+      contextMenuOrder: 2,
+      run: () => aiService.refactorCodeWithDiff(),
+    });
+
+    editor.addAction({
+      id: "pix.ai.fix",
+      label: "✨ AI: Fix Bugs",
+      contextMenuGroupId: "navigation",
+      contextMenuOrder: 3,
+      run: () => aiService.fixBug(),
+    });
+
+    editor.addAction({
+      id: "pix.ai.comments",
+      label: "✨ AI: Add Documentation / Comments",
+      contextMenuGroupId: "navigation",
+      contextMenuOrder: 4,
+      run: () => aiService.generateComments(),
+    });
 
     // Listen to cursor position changes to update active breadcrumb symbol
     editor.onDidChangeCursorPosition((e) => {
@@ -95,8 +134,11 @@ const EditorPanel = () => {
       style={{ backgroundColor: "var(--bg-editor)" }}
       className="flex-1 min-h-0 h-full flex flex-col transition-colors duration-200"
     >
-      {/* Breadcrumb Navigation Bar */}
-      <BreadcrumbBar />
+      {/* Top Header with Breadcrumbs & AI Action Bar */}
+      <div className="flex items-center justify-between border-b border-neutral-800 pr-3 bg-neutral-900/40 select-none">
+        <BreadcrumbBar />
+        <AIActionMenu />
+      </div>
 
       <div className="flex-1 min-h-0 relative">
         <Editor
@@ -111,6 +153,7 @@ const EditorPanel = () => {
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
             automaticLayout: true,
+            inlineCompletions: { enabled: true },
           }}
         />
       </div>

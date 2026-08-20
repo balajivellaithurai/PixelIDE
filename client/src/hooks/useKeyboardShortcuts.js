@@ -4,6 +4,7 @@ import useWorkspaceStore from "../store/workspaceStore";
 import useEditorStore from "../store/editorStore";
 import useIDEStore from "../store/ideStore";
 import { matchesShortcut } from "../services/shortcutService";
+import aiService from "../services/aiService";
 
 export const SHORTCUTS = {
   SAVE_PROJECT: { key: "s", ctrl: true },
@@ -13,6 +14,12 @@ export const SHORTCUTS = {
   CLOSE_TAB: { key: "w", ctrl: true },
   COMMAND_PALETTE: { key: "p", ctrl: true, shift: true },
   GLOBAL_SEARCH: { key: "f", ctrl: true, shift: true },
+  AI_EXPLAIN: { key: "e", ctrl: true, shift: true },
+  AI_FIX: { key: "x", ctrl: true, shift: true },
+  AI_REFACTOR: { key: "r", ctrl: true, shift: true },
+  AI_TESTS: { key: "t", ctrl: true, shift: true },
+  AI_DOCS: { key: "d", ctrl: true, shift: true },
+  AI_README: { key: "m", ctrl: true, shift: true },
 };
 
 export const handleGlobalShortcut = (e) => {
@@ -32,6 +39,49 @@ export const handleGlobalShortcut = (e) => {
     e.preventDefault();
     e.stopPropagation();
     useIDEStore.getState().setActiveSidebarTab("search");
+    return true;
+  }
+
+  // AI Shortcuts
+  if (matchesShortcut(e, SHORTCUTS.AI_EXPLAIN)) {
+    e.preventDefault();
+    e.stopPropagation();
+    aiService.explainFunction();
+    return true;
+  }
+
+  if (matchesShortcut(e, SHORTCUTS.AI_FIX)) {
+    e.preventDefault();
+    e.stopPropagation();
+    aiService.fixBug();
+    return true;
+  }
+
+  if (matchesShortcut(e, SHORTCUTS.AI_REFACTOR)) {
+    e.preventDefault();
+    e.stopPropagation();
+    aiService.refactorCodeWithDiff();
+    return true;
+  }
+
+  if (matchesShortcut(e, SHORTCUTS.AI_TESTS)) {
+    e.preventDefault();
+    e.stopPropagation();
+    aiService.generateTests();
+    return true;
+  }
+
+  if (matchesShortcut(e, SHORTCUTS.AI_DOCS)) {
+    e.preventDefault();
+    e.stopPropagation();
+    aiService.generateComments();
+    return true;
+  }
+
+  if (matchesShortcut(e, SHORTCUTS.AI_README)) {
+    e.preventDefault();
+    e.stopPropagation();
+    aiService.generateReadme();
     return true;
   }
 
