@@ -42,24 +42,20 @@ export const handleGlobalShortcut = (e) => {
     (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") &&
     activeEl.type !== "file";
 
-  // Ctrl + S -> Save Project
+  // Ctrl + S -> Save Current Project
   if (matchesShortcut(e, SHORTCUTS.SAVE_PROJECT)) {
     e.preventDefault();
     e.stopPropagation();
-    useWorkspaceStore.getState().saveProject();
+    useWorkspaceStore.getState().saveCurrentProject();
     toast.success("Project saved successfully!", { id: "shortcut-save" });
     return true;
   }
 
-  // Ctrl + O -> Open Project
+  // Ctrl + O -> Open Project Manager
   if (matchesShortcut(e, SHORTCUTS.OPEN_PROJECT)) {
     e.preventDefault();
     e.stopPropagation();
-    const fileInput = document.getElementById("pixelide-open-file-input");
-    if (fileInput) {
-      fileInput.click();
-    }
-    toast("Select a .pixel project file...", { icon: "📂", id: "shortcut-open" });
+    useWorkspaceStore.getState().setShowProjectModal(true);
     return true;
   }
 

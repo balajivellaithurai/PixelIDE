@@ -1,62 +1,98 @@
 import { create } from "zustand";
 import useEditorStore from "./editorStore";
-import { exportProjectFile, parseProjectFile } from "../services/projectService";
+import gitService from "../services/gitService";
+import {
+  createProjectMetadata,
+  PROJECT_TEMPLATES,
+  getLanguageFromFilename,
+  getRecentProjects,
+  addRecentProject,
+  removeRecentProject as removeRecentFromStorage,
+  saveActiveProjectToStorage,
+  getActiveProjectFromStorage,
+  exportProjectZip,
+  exportProjectFile,
+  importProjectZip,
+  parseProjectFile,
+} from "../services/projectService";
 
-const getLanguageFromFilename = (filename) => {
-  const ext = filename.split(".").pop()?.toLowerCase();
-  switch (ext) {
-    case "py":
-      return "python";
-    case "cpp":
-    case "cc":
-    case "cxx":
-      return "cpp";
-    case "c":
-      return "c";
-    case "java":
-      return "java";
-    case "html":
-      return "html";
-    case "css":
-      return "css";
-    case "json":
-      return "json";
-    case "js":
-    case "jsx":
-    case "ts":
-    case "tsx":
-    default:
-      return "javascript";
-  }
-};
+let autoSaveTimer = null;
 
-const defaultFile = {
-  id: "1",
-  name: "app.js",
-  language: "javascript",
-  content: `// JavaScript\nconsole.log("Hello, World!");`,
-};
+const defaultFiles = [
+  {
+    id: "1",
+    name: "app.js",
+    language: "javascript",
+    content: `// JavaScript\nconsole.log("Hello, World!");`,
+  },
+  {
+    id: "2",
+    name: "script.py",
+    language: "python",
+    content: '# Python\nprint("Hello, World!")',
+  },
+  {
+    id: "3",
+    name: "main.cpp",
+    language: "cpp",
+    content:
+      '// C++\n#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    return 0;\n}',
+  },
+];
+
+const initialProject =
+  getActiveProjectFromStorage() ||
+  createProjectMetadata({
+    name: "Pix Demo Project",
+    files: defaultFiles,
+    activeFileId: "1",
+    openFiles: ["1", "2", "3"],
+  });
 
 const useWorkspaceStore = create((set, get) => ({
-  files: [
-    defaultFile,
-    {
-      id: "2",
-      name: "script.py",
-      language: "python",
-      content: '# Python\nprint("Hello, World!")',
-    },
-    {
-      id: "3",
-      name: "main.cpp",
-      language: "cpp",
-      content:
-        '// C++\n#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    return 0;\n}',
-    },
-  ],
-  activeFileId: "1",
-  openFiles: ["1", "2", "3"],
-  recentlyEditedFiles: ["app.js", "script.py", "main.cpp"],
+  currentProject: initialProject,
+  recentProjects: getRecentProjects(),
+  files: initialProject.files || defaultFiles,
+  activeFileId: initialProject.activeFileId || "1",
+  openFiles: initialProject.openFiles || ["1", "2", "3"],
+  recentlyEditedFiles: (initialProject.files || defaultFiles).map((f) => f.name),
+  saveStatus: "saved", // 'saved' | 'saving' | 'unsaved'
+  hasUnsavedChanges: false,
+  showProjectModal: false,
+  showUnsavedModal: false,
+  pendingAction: null, // callback to run after user approves unsaved changes dialog
+
+  setShowProjectModal: (show) => set({ showProjectModal: show }),
+  setShowUnsavedModal: (show) => set({ showUnsavedModal: show }),
+  setPendingAction: (action) => set({ pendingAction: action }),
+
+  // Schedule debounced auto-save
+  scheduleAutoSave: () => {
+    set({ hasUnsavedChanges: true, saveStatus: "unsaved" });
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
+    autoSaveTimer = setTimeout(async () => {
+      set({ saveStatus: "saving" });
+      const state = get();
+      const updatedProject = {
+        ...state.currentProject,
+        updatedAt: new Date().toISOString(),
+        files: state.files,
+        activeFileId: state.activeFileId,
+        openFiles: state.openFiles,
+      };
+
+      saveActiveProjectToStorage(updatedProject);
+      await gitService.syncFiles(state.files);
+
+      set({
+        currentProject: updatedProject,
+        recentProjects: getRecentProjects(),
+        hasUnsavedChanges: false,
+        saveStatus: "saved",
+      });
+    }, 1000);
+  },
 
   setActiveFile: (id) => {
     const file = get().files.find((f) => f.id === id);
@@ -78,7 +114,7 @@ const useWorkspaceStore = create((set, get) => ({
     }
   },
 
-  updateFileContent: (id, content) =>
+  updateFileContent: (id, content) => {
     set((state) => {
       const target = state.files.find((f) => f.id === id);
       const recent = target
@@ -91,7 +127,9 @@ const useWorkspaceStore = create((set, get) => ({
         ),
         recentlyEditedFiles: recent,
       };
-    }),
+    });
+    get().scheduleAutoSave();
+  },
 
   createFile: (name, language) => {
     if (!name || !name.trim()) return;
@@ -111,9 +149,10 @@ const useWorkspaceStore = create((set, get) => ({
 
     useEditorStore.getState().setLanguage(newFile.language);
     useEditorStore.getState().setCode("");
+    get().scheduleAutoSave();
   },
 
-  closeFile: (id) =>
+  closeFile: (id) => {
     set((state) => {
       const openFiles = state.openFiles.filter((fileId) => fileId !== id);
       let nextActive = state.activeFileId;
@@ -134,9 +173,11 @@ const useWorkspaceStore = create((set, get) => ({
         openFiles,
         activeFileId: nextActive,
       };
-    }),
+    });
+    get().scheduleAutoSave();
+  },
 
-  deleteFile: (id) =>
+  deleteFile: (id) => {
     set((state) => {
       const files = state.files.filter((f) => f.id !== id);
       const openFiles = state.openFiles.filter((fileId) => fileId !== id);
@@ -164,39 +205,180 @@ const useWorkspaceStore = create((set, get) => ({
         openFiles,
         activeFileId: nextActive,
       };
-    }),
-
-  saveProject: () => {
-    const state = get();
-    exportProjectFile(state);
+    });
+    get().scheduleAutoSave();
   },
 
-  importProject: async (file) => {
-    try {
-      const projectData = await parseProjectFile(file);
-      set({
-        files: projectData.files,
-        openFiles: projectData.openFiles,
-        activeFileId: projectData.activeFileId,
-      });
+  /**
+   * Project Management Operations
+   */
+  createNewProject: async (name, templateId = "blank") => {
+    const template = PROJECT_TEMPLATES[templateId] || PROJECT_TEMPLATES.blank;
+    const projectFiles = template.files.map((f) => ({
+      id: crypto.randomUUID(),
+      name: f.name,
+      language: getLanguageFromFilename(f.name),
+      content: f.content,
+    }));
 
-      if (projectData.activeFileId) {
-        const active = projectData.files.find(
-          (f) => f.id === projectData.activeFileId
-        );
-        if (active) {
-          useEditorStore.getState().setLanguage(active.language);
-          useEditorStore.getState().setCode(active.content || "");
-        }
-      } else if (projectData.files.length > 0) {
-        const first = projectData.files[0];
-        set({ activeFileId: first.id });
-        useEditorStore.getState().setLanguage(first.language);
-        useEditorStore.getState().setCode(first.content || "");
-      }
-    } catch (err) {
-      console.error(err);
-      alert(err.message || "Failed to load project file");
+    const newProject = createProjectMetadata({
+      name: name || template.name,
+      files: projectFiles,
+      activeFileId: projectFiles[0]?.id,
+      openFiles: projectFiles.map((f) => f.id),
+    });
+
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
+    saveActiveProjectToStorage(newProject);
+    await gitService.syncFiles(newProject.files);
+
+    set({
+      currentProject: newProject,
+      files: newProject.files,
+      openFiles: newProject.openFiles,
+      activeFileId: newProject.activeFileId,
+      recentlyEditedFiles: newProject.files.map((f) => f.name),
+      recentProjects: getRecentProjects(),
+      hasUnsavedChanges: false,
+      saveStatus: "saved",
+    });
+
+    if (newProject.files[0]) {
+      useEditorStore.getState().setLanguage(newProject.files[0].language);
+      useEditorStore.getState().setCode(newProject.files[0].content || "");
+    }
+  },
+
+  openRecentProject: async (projectData) => {
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
+    const project = createProjectMetadata({
+      id: projectData.id,
+      name: projectData.name,
+      files: projectData.files || [],
+      activeFileId: projectData.activeFileId,
+      openFiles: projectData.openFiles,
+    });
+
+    saveActiveProjectToStorage(project);
+    await gitService.syncFiles(project.files);
+
+    set({
+      currentProject: project,
+      files: project.files,
+      openFiles: project.openFiles,
+      activeFileId: project.activeFileId,
+      recentlyEditedFiles: project.files.map((f) => f.name),
+      recentProjects: getRecentProjects(),
+      hasUnsavedChanges: false,
+      saveStatus: "saved",
+    });
+
+    const activeFile = project.files.find((f) => f.id === project.activeFileId) || project.files[0];
+    if (activeFile) {
+      useEditorStore.getState().setLanguage(activeFile.language);
+      useEditorStore.getState().setCode(activeFile.content || "");
+    }
+  },
+
+  removeRecentProject: (projectId) => {
+    const updated = removeRecentFromStorage(projectId);
+    set({ recentProjects: updated });
+  },
+
+  saveCurrentProject: async () => {
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    set({ saveStatus: "saving" });
+
+    const state = get();
+    const updatedProject = {
+      ...state.currentProject,
+      updatedAt: new Date().toISOString(),
+      files: state.files,
+      activeFileId: state.activeFileId,
+      openFiles: state.openFiles,
+    };
+
+    saveActiveProjectToStorage(updatedProject);
+    await gitService.syncFiles(state.files);
+
+    set({
+      currentProject: updatedProject,
+      recentProjects: getRecentProjects(),
+      hasUnsavedChanges: false,
+      saveStatus: "saved",
+    });
+  },
+
+  exportAsZip: async () => {
+    const state = get();
+    const project = {
+      ...state.currentProject,
+      files: state.files,
+    };
+    await exportProjectZip(project);
+  },
+
+  exportAsJson: () => {
+    const state = get();
+    const project = {
+      ...state.currentProject,
+      updatedAt: new Date().toISOString(),
+      files: state.files,
+      activeFileId: state.activeFileId,
+      openFiles: state.openFiles,
+    };
+    exportProjectFile(project);
+  },
+
+  importFromZip: async (file) => {
+    const importedProject = await importProjectZip(file);
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
+    saveActiveProjectToStorage(importedProject);
+    await gitService.syncFiles(importedProject.files);
+
+    set({
+      currentProject: importedProject,
+      files: importedProject.files,
+      openFiles: importedProject.openFiles,
+      activeFileId: importedProject.activeFileId,
+      recentlyEditedFiles: importedProject.files.map((f) => f.name),
+      recentProjects: getRecentProjects(),
+      hasUnsavedChanges: false,
+      saveStatus: "saved",
+    });
+
+    const activeFile = importedProject.files[0];
+    if (activeFile) {
+      useEditorStore.getState().setLanguage(activeFile.language);
+      useEditorStore.getState().setCode(activeFile.content || "");
+    }
+  },
+
+  importFromJson: async (file) => {
+    const importedProject = await parseProjectFile(file);
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+
+    saveActiveProjectToStorage(importedProject);
+    await gitService.syncFiles(importedProject.files);
+
+    set({
+      currentProject: importedProject,
+      files: importedProject.files,
+      openFiles: importedProject.openFiles,
+      activeFileId: importedProject.activeFileId,
+      recentlyEditedFiles: importedProject.files.map((f) => f.name),
+      recentProjects: getRecentProjects(),
+      hasUnsavedChanges: false,
+      saveStatus: "saved",
+    });
+
+    const activeFile = importedProject.files[0];
+    if (activeFile) {
+      useEditorStore.getState().setLanguage(activeFile.language);
+      useEditorStore.getState().setCode(activeFile.content || "");
     }
   },
 }));

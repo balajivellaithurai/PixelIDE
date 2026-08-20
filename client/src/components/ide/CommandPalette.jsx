@@ -26,13 +26,41 @@ export default function CommandPalette() {
   const { runCode } = useEditorStore();
   const { theme, setTheme } = useThemeStore();
   const { openSidebar, setActiveTab } = useAIStore();
-  const { files, setActiveFile } = useWorkspaceStore();
+  const { files, setActiveFile, setShowProjectModal, saveCurrentProject, exportAsZip, exportAsJson } = useWorkspaceStore();
 
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef(null);
 
   const COMMANDS = [
+    {
+      id: "project-manager",
+      title: "Project Manager (New, Recent, Import/Export)",
+      category: "Project",
+      icon: FiBox,
+      action: () => setShowProjectModal(true),
+    },
+    {
+      id: "save-project",
+      title: "Save Project",
+      category: "Project",
+      icon: FiFileText,
+      action: () => saveCurrentProject(),
+    },
+    {
+      id: "export-zip",
+      title: "Export Project ZIP Archive",
+      category: "Project",
+      icon: FiBox,
+      action: () => exportAsZip(),
+    },
+    {
+      id: "export-json",
+      title: "Export Project Metadata (.pixproject)",
+      category: "Project",
+      icon: FiFileText,
+      action: () => exportAsJson(),
+    },
     {
       id: "run-code",
       title: "Run Code",

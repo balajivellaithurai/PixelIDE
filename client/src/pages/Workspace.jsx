@@ -7,6 +7,8 @@ import AISidebar from "../components/ai/AISidebar";
 import AIToggleButton from "../components/ai/AIToggleButton";
 import CommandPalette from "../components/ide/CommandPalette";
 import GitStatusBar from "../components/git/GitStatusBar";
+import ProjectManagerModal from "../components/project/ProjectManagerModal";
+import UnsavedChangesModal from "../components/project/UnsavedChangesModal";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 
 const Workspace = () => {
@@ -42,6 +44,12 @@ const Workspace = () => {
 
       {/* VS Code Command Palette Overlay (Ctrl+Shift+P) */}
       <CommandPalette />
+
+      {/* Project Manager Modal */}
+      <ProjectManagerModal />
+
+      {/* Unsaved Changes Confirmation Modal */}
+      <UnsavedChangesModal />
     </div>
   );
 };
