@@ -4,6 +4,7 @@ import useWorkspaceStore from "../../store/workspaceStore";
 import useIDEStore from "../../store/ideStore";
 import monacoService from "../../services/monacoService";
 import FileIcon from "./FileIcon";
+import EmptyState from "../common/EmptyState";
 
 export default function GlobalSearchPanel() {
   const { files, setActiveFile, updateFileContent } = useWorkspaceStore();
@@ -127,13 +128,17 @@ export default function GlobalSearchPanel() {
       {/* Search Results Area */}
       <div className="flex-1 overflow-y-auto space-y-2 pr-1">
         {!globalSearchQuery.trim() ? (
-          <div className="p-4 text-center text-neutral-500 text-xs italic my-auto">
-            Type a query above to search all workspace files.
-          </div>
+          <EmptyState
+            icon={FiSearch}
+            title="Search Workspace"
+            description="Type a search term above to find matching code across all project files."
+          />
         ) : searchResults.length === 0 ? (
-          <div className="p-4 text-center text-neutral-500 text-xs italic my-auto">
-            No matches found for "{globalSearchQuery}".
-          </div>
+          <EmptyState
+            icon={FiSearch}
+            title="No Matches Found"
+            description={`No occurrences of "${globalSearchQuery}" were found in any files.`}
+          />
         ) : (
           searchResults.map((fileGroup) => (
             <div

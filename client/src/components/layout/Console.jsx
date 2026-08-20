@@ -1,7 +1,8 @@
 import useEditorStore from "../../store/editorStore";
+import { FiTrash2 } from "react-icons/fi";
 
 const Console = () => {
-  const { output, isLoading } = useEditorStore();
+  const { output, setOutput, isLoading } = useEditorStore();
 
   return (
     <div
@@ -18,11 +19,25 @@ const Console = () => {
         >
           Console Output
         </span>
-        {isLoading && (
-          <span className="text-xs text-purple-400 animate-pulse font-sans">
-            Running...
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {isLoading && (
+            <span className="text-xs text-purple-400 animate-pulse font-sans flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+              Running execution...
+            </span>
+          )}
+          {output && (
+            <button
+              onClick={() => setOutput("")}
+              aria-label="Clear Console Output"
+              className="text-xs text-neutral-400 hover:text-white flex items-center gap-1 transition cursor-pointer font-sans"
+              title="Clear Console"
+            >
+              <FiTrash2 className="text-xs" />
+              <span>Clear</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <pre

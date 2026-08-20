@@ -17,7 +17,7 @@ import GitDiffViewer from "../git/GitDiffViewer";
 import AIActionMenu from "../ai/AIActionMenu";
 
 const EditorPanel = () => {
-  const { code, language, setCode } = useEditorStore();
+  const { code, language, setCode, editorOptions } = useEditorStore();
   const { activeFileId, updateFileContent, files } = useWorkspaceStore();
   const { theme } = useThemeStore();
   const { markFileUnsaved, setCurrentSymbol } = useIDEStore();
@@ -162,8 +162,10 @@ const EditorPanel = () => {
           onMount={handleEditorDidMount}
           theme={theme}
           options={{
-            fontSize: 14,
-            minimap: { enabled: false },
+            fontSize: editorOptions?.fontSize || 14,
+            tabSize: editorOptions?.tabSize || 2,
+            wordWrap: editorOptions?.wordWrap || "off",
+            minimap: { enabled: Boolean(editorOptions?.minimap) },
             scrollBeyondLastLine: false,
             automaticLayout: true,
             inlineCompletions: { enabled: true },

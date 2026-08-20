@@ -5,6 +5,7 @@ import useEditorStore from "../../store/editorStore";
 import useIDEStore from "../../store/ideStore";
 import monacoService from "../../services/monacoService";
 import { parseFileOutline } from "../../services/outlineParser";
+import EmptyState from "../common/EmptyState";
 
 export default function OutlinePanel() {
   const { files, activeFileId } = useWorkspaceStore();
@@ -50,9 +51,11 @@ export default function OutlinePanel() {
       </div>
 
       {symbols.length === 0 ? (
-        <div className="p-4 text-center text-neutral-500 text-xs italic my-auto">
-          No classes, functions, or variables detected in file.
-        </div>
+        <EmptyState
+          icon={FiList}
+          title="No Symbols Detected"
+          description={`No classes, functions, or variables found in ${activeFile.name}.`}
+        />
       ) : (
         <div className="flex-1 overflow-y-auto space-y-1 pr-1">
           {symbols.map((symbol, idx) => (

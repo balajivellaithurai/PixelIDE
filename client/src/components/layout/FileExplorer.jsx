@@ -2,6 +2,8 @@ import { useState } from "react";
 import useWorkspaceStore from "../../store/workspaceStore";
 import useIDEStore from "../../store/ideStore";
 import FileIcon from "../ide/FileIcon";
+import EmptyState from "../common/EmptyState";
+import { FiFolder } from "react-icons/fi";
 
 export default function FileExplorer() {
   const { files, activeFileId, setActiveFile, createFile, deleteFile } =
@@ -51,6 +53,7 @@ export default function FileExplorer() {
           style={{ color: "var(--text-muted)" }}
           className="p-1 hover:text-white rounded transition cursor-pointer"
           title="New File"
+          aria-label="Create New File"
         >
           <svg
             className="w-4 h-4"
@@ -98,62 +101,73 @@ export default function FileExplorer() {
 
       {/* File List */}
       <div className="space-y-1 overflow-y-auto flex-1">
-        {files.map((file) => {
-          const isActive = activeFileId === file.id;
-          const isUnsaved = unsavedFileIds.includes(file.id);
+        {files.length === 0 ? (
+          <EmptyState
+            icon={FiFolder}
+            title="No Files Found"
+            description="Your workspace has no open files. Create a new file to start coding."
+            actionLabel="Create File"
+            onAction={() => setIsCreating(true)}
+          />
+        ) : (
+          files.map((file) => {
+            const isActive = activeFileId === file.id;
+            const isUnsaved = unsavedFileIds.includes(file.id);
 
-          return (
-            <div
-              key={file.id}
-              onClick={() => setActiveFile(file.id)}
-              style={
-                isActive
-                  ? {
-                      backgroundColor: "rgba(147, 51, 234, 0.15)",
-                      color: "var(--text-active)",
-                      borderLeft: "3px solid var(--accent-color)",
-                    }
-                  : { color: "var(--text-main)" }
-              }
-              className={`group flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer text-xs transition-colors ${
-                !isActive ? "hover:bg-[var(--bg-hover)]" : ""
-              }`}
-            >
-              <div className="flex items-center space-x-2 truncate">
-                <FileIcon filename={file.name} className="w-3.5 h-3.5" />
-                <span className="truncate">{file.name}</span>
-                {isUnsaved && (
-                  <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" title="Modified file"></span>
+            return (
+              <div
+                key={file.id}
+                onClick={() => setActiveFile(file.id)}
+                style={
+                  isActive
+                    ? {
+                        backgroundColor: "rgba(147, 51, 234, 0.15)",
+                        color: "var(--text-active)",
+                        borderLeft: "3px solid var(--accent-color)",
+                      }
+                    : { color: "var(--text-main)" }
+                }
+                className={`group flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer text-xs transition-colors ${
+                  !isActive ? "hover:bg-[var(--bg-hover)]" : ""
+                }`}
+              >
+                <div className="flex items-center space-x-2 truncate">
+                  <FileIcon filename={file.name} className="w-3.5 h-3.5" />
+                  <span className="truncate">{file.name}</span>
+                  {isUnsaved && (
+                    <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" title="Modified file"></span>
+                  )}
+                </div>
+
+                {files.length > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteFile(file.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400 rounded transition"
+                    title="Delete file"
+                    aria-label={`Delete ${file.name}`}
+                  >
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
                 )}
               </div>
-
-              {files.length > 1 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteFile(file.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400 rounded transition"
-                  title="Delete file"
-                >
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              )}
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

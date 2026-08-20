@@ -14,8 +14,9 @@ import UnsavedChangesModal from "../components/project/UnsavedChangesModal";
 import AIRefactorDiffModal from "../components/ai/AIRefactorDiffModal";
 import CommentPreviewModal from "../components/ai/CommentPreviewModal";
 import ReadMePreviewModal from "../components/ai/ReadMePreviewModal";
-import AISettingsModal from "../components/ai/AISettingsModal";
+import SettingsModal from "../components/settings/SettingsModal";
 import ShareProjectModal from "../components/collaboration/ShareProjectModal";
+import ErrorBoundary from "../components/common/ErrorBoundary";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import useWorkspaceStore from "../store/workspaceStore";
 import collaborationService from "../collaboration/collaborationService";
@@ -48,22 +49,30 @@ const Workspace = () => {
 
       {/* Main Workspace Body */}
       <div className="flex flex-1 overflow-hidden relative">
-        <Sidebar />
+        <ErrorBoundary name="Sidebar">
+          <Sidebar />
+        </ErrorBoundary>
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
           <FileTabs />
-          <EditorPanel />
+          <ErrorBoundary name="Monaco Editor">
+            <EditorPanel />
+          </ErrorBoundary>
         </div>
 
         <AIToggleButton />
-        <AISidebar />
+        <ErrorBoundary name="AI Assistant">
+          <AISidebar />
+        </ErrorBoundary>
       </div>
 
       {/* Git Source Control Bottom Status Bar */}
       <GitStatusBar />
 
       {/* Terminal / Console Panel */}
-      <Console />
+      <ErrorBoundary name="Console Terminal">
+        <Console />
+      </ErrorBoundary>
 
       {/* VS Code Command Palette Overlay (Ctrl+Shift+P) */}
       <CommandPalette />
@@ -74,11 +83,11 @@ const Workspace = () => {
       {/* Unsaved Changes Confirmation Modal */}
       <UnsavedChangesModal />
 
-      {/* Sprint 14 AI Modals */}
+      {/* Sprint 14 & 16 Settings & AI Modals */}
       <AIRefactorDiffModal />
       <CommentPreviewModal />
       <ReadMePreviewModal />
-      <AISettingsModal />
+      <SettingsModal />
 
       {/* Sprint 15 Collaboration Modals */}
       <ShareProjectModal />

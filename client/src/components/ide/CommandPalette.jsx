@@ -19,6 +19,7 @@ import useWorkspaceStore from "../../store/workspaceStore";
 import useEditorStore from "../../store/editorStore";
 import useThemeStore, { THEMES } from "../../store/themeStore";
 import useAIStore from "../../store/aiStore";
+import useCollaborationStore from "../../collaboration/collaborationStore";
 import aiService from "../../services/aiService";
 
 export default function CommandPalette() {
@@ -105,6 +106,34 @@ export default function CommandPalette() {
       category: "AI Superpowers",
       icon: FiBox,
       action: () => aiService.generateReadme(),
+    },
+    {
+      id: "ide-settings",
+      title: "Open Centralized IDE Settings Panel",
+      category: "Settings",
+      icon: FiBox,
+      action: () => useAIStore.getState().openSettingsModal(),
+    },
+    {
+      id: "share-project",
+      title: "Share Project for Real-Time Collaboration",
+      category: "Collaboration",
+      icon: FiBox,
+      action: () => useCollaborationStore.getState().openShareModal(),
+    },
+    {
+      id: "collab-panel",
+      title: "Show Real-Time Collaboration Panel",
+      category: "Collaboration",
+      icon: FiBox,
+      action: () => setActiveSidebarTab("collab"),
+    },
+    {
+      id: "git-panel",
+      title: "Show Git Source Control Panel",
+      category: "Git",
+      icon: FiBox,
+      action: () => setActiveSidebarTab("git"),
     },
     {
       id: "ai-settings",

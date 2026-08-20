@@ -55,6 +55,7 @@ export default function FileTabs() {
                 e.stopPropagation();
                 closeFile(file.id);
               }}
+              aria-label={`Close tab ${file.name}`}
               className="text-neutral-500 hover:text-white hover:bg-neutral-800 p-0.5 rounded transition cursor-pointer text-xs font-bold"
               title="Close tab"
             >
