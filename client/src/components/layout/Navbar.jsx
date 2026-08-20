@@ -2,8 +2,10 @@ import useEditorStore from "../../store/editorStore";
 import useWorkspaceStore from "../../store/workspaceStore";
 import useThemeStore, { THEMES } from "../../store/themeStore";
 import useAIStore from "../../store/aiStore";
+import useCollaborationStore from "../../collaboration/collaborationStore";
 import ProjectSaveIndicator from "../project/ProjectSaveIndicator";
-import { FiFolder, FiSave, FiSliders } from "react-icons/fi";
+import CollaborationStatus from "../collaboration/CollaborationStatus";
+import { FiFolder, FiSave, FiSliders, FiShare2 } from "react-icons/fi";
 import toast from "react-hot-toast";
 
 const Navbar = () => {
@@ -11,6 +13,7 @@ const Navbar = () => {
   const { currentProject, saveCurrentProject, setShowProjectModal } = useWorkspaceStore();
   const { theme, setTheme } = useThemeStore();
   const { openSettingsModal } = useAIStore();
+  const { openShareModal } = useCollaborationStore();
 
   const handleSaveClick = async () => {
     try {
@@ -52,6 +55,19 @@ const Navbar = () => {
 
       {/* Controls */}
       <div className="flex items-center gap-3 font-sans">
+        {/* Real-time Collaboration Status Badge */}
+        <CollaborationStatus />
+
+        {/* Share Project Session Button */}
+        <button
+          onClick={openShareModal}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+          title="Share Project for Real-time Collaboration"
+        >
+          <FiShare2 className="text-purple-400 text-xs" />
+          <span>Share</span>
+        </button>
+
         {/* AI Settings Trigger */}
         <button
           onClick={openSettingsModal}

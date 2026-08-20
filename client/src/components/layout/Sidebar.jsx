@@ -1,8 +1,9 @@
-import { FiFolder, FiSearch, FiList, FiGitBranch, FiChevronLeft } from "react-icons/fi";
+import { FiFolder, FiSearch, FiList, FiGitBranch, FiUsers, FiChevronLeft } from "react-icons/fi";
 import FileExplorer from "./FileExplorer";
 import GlobalSearchPanel from "../ide/GlobalSearchPanel";
 import OutlinePanel from "../ide/OutlinePanel";
 import GitPanel from "../git/GitPanel";
+import CollaborationPanel from "../collaboration/CollaborationPanel";
 import useIDEStore from "../../store/ideStore";
 
 export default function Sidebar() {
@@ -33,6 +34,18 @@ export default function Sidebar() {
           title="File Explorer"
         >
           <FiFolder className="text-base" />
+        </button>
+
+        <button
+          onClick={() => setActiveSidebarTab("collab")}
+          className={`p-2 rounded-lg transition cursor-pointer ${
+            activeSidebarTab === "collab"
+              ? "bg-purple-600/30 text-purple-300 border border-purple-500/40"
+              : "text-neutral-400 hover:text-white"
+          }`}
+          title="Real-Time Collaboration"
+        >
+          <FiUsers className="text-base" />
         </button>
 
         <button
@@ -88,7 +101,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setActiveSidebarTab("explorer")}
-            className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 text-xs ${
+            className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 text-xs ${
               activeSidebarTab === "explorer"
                 ? "bg-purple-600/30 text-purple-300 border border-purple-500/40 font-semibold"
                 : "text-neutral-400 hover:text-white"
@@ -100,8 +113,21 @@ export default function Sidebar() {
           </button>
 
           <button
+            onClick={() => setActiveSidebarTab("collab")}
+            className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 text-xs ${
+              activeSidebarTab === "collab"
+                ? "bg-purple-600/30 text-purple-300 border border-purple-500/40 font-semibold"
+                : "text-neutral-400 hover:text-white"
+            }`}
+            title="Real-Time Collaboration"
+          >
+            <FiUsers className="text-xs" />
+            <span>Collab</span>
+          </button>
+
+          <button
             onClick={() => setActiveSidebarTab("git")}
-            className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 text-xs ${
+            className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 text-xs ${
               activeSidebarTab === "git"
                 ? "bg-purple-600/30 text-purple-300 border border-purple-500/40 font-semibold"
                 : "text-neutral-400 hover:text-white"
@@ -114,7 +140,7 @@ export default function Sidebar() {
 
           <button
             onClick={() => setActiveSidebarTab("search")}
-            className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 text-xs ${
+            className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 text-xs ${
               activeSidebarTab === "search"
                 ? "bg-purple-600/30 text-purple-300 border border-purple-500/40 font-semibold"
                 : "text-neutral-400 hover:text-white"
@@ -127,7 +153,7 @@ export default function Sidebar() {
 
           <button
             onClick={() => setActiveSidebarTab("outline")}
-            className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 text-xs ${
+            className={`p-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 text-xs ${
               activeSidebarTab === "outline"
                 ? "bg-purple-600/30 text-purple-300 border border-purple-500/40 font-semibold"
                 : "text-neutral-400 hover:text-white"
@@ -150,7 +176,9 @@ export default function Sidebar() {
 
       {/* Main View Area */}
       <div className="flex-1 p-3.5 overflow-y-auto">
-        {activeSidebarTab === "git" ? (
+        {activeSidebarTab === "collab" ? (
+          <CollaborationPanel />
+        ) : activeSidebarTab === "git" ? (
           <GitPanel />
         ) : activeSidebarTab === "search" ? (
           <GlobalSearchPanel />

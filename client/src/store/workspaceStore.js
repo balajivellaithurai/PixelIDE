@@ -15,6 +15,7 @@ import {
   importProjectZip,
   parseProjectFile,
 } from "../services/projectService";
+import collaborationService from "../collaboration/collaborationService";
 
 let autoSaveTimer = null;
 
@@ -111,6 +112,7 @@ const useWorkspaceStore = create((set, get) => ({
       if (file.content !== undefined) {
         useEditorStore.getState().setCode(file.content);
       }
+      collaborationService.notifyActiveFileChanged(file.name);
     }
   },
 
@@ -131,14 +133,14 @@ const useWorkspaceStore = create((set, get) => ({
     get().scheduleAutoSave();
   },
 
-  createFile: (name, language) => {
+  createFile: (name, language, content = "") => {
     if (!name || !name.trim()) return;
     const inferredLang = language || getLanguageFromFilename(name);
     const newFile = {
       id: crypto.randomUUID(),
       name: name.trim(),
       language: inferredLang,
-      content: "",
+      content,
     };
 
     set((state) => ({
@@ -148,8 +150,26 @@ const useWorkspaceStore = create((set, get) => ({
     }));
 
     useEditorStore.getState().setLanguage(newFile.language);
-    useEditorStore.getState().setCode("");
+    useEditorStore.getState().setCode(content);
     get().scheduleAutoSave();
+
+    collaborationService.broadcastFileOp("create", { file: newFile });
+    return newFile;
+  },
+
+  renameFile: (id, newName) => {
+    if (!id || !newName || !newName.trim()) return;
+    const trimmed = newName.trim();
+    const inferredLang = getLanguageFromFilename(trimmed);
+
+    set((state) => ({
+      files: state.files.map((file) =>
+        file.id === id ? { ...file, name: trimmed, language: inferredLang } : file
+      ),
+    }));
+    get().scheduleAutoSave();
+
+    collaborationService.broadcastFileOp("rename", { fileId: id, newName: trimmed });
   },
 
   closeFile: (id) => {
@@ -207,6 +227,8 @@ const useWorkspaceStore = create((set, get) => ({
       };
     });
     get().scheduleAutoSave();
+
+    collaborationService.broadcastFileOp("delete", { fileId: id });
   },
 
   /**

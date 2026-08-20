@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import axios from 'axios';
@@ -7,6 +8,7 @@ import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { initCollaborationServer } from './collaboration/collaborationServer.js';
 
 dotenv.config();
 
@@ -29,7 +31,11 @@ async function runGit(args, cwd = WORKSPACE_DIR) {
 }
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Initialize Socket.IO Real-Time Collaboration Server (Sprint 15)
+initCollaborationServer(httpServer);
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -549,7 +555,7 @@ app.post('/api/ai/generate', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 PixelIDE Server listening on port ${PORT}`);
+httpServer.listen(PORT, () => {
+  console.log(`🚀 PixelIDE Server with Socket.IO Collaboration listening on port ${PORT}`);
 });
 

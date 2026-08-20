@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useSearchParams, useParams } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import FileTabs from "../components/layout/FileTabs";
 import Sidebar from "../components/layout/Sidebar";
@@ -13,11 +15,28 @@ import AIRefactorDiffModal from "../components/ai/AIRefactorDiffModal";
 import CommentPreviewModal from "../components/ai/CommentPreviewModal";
 import ReadMePreviewModal from "../components/ai/ReadMePreviewModal";
 import AISettingsModal from "../components/ai/AISettingsModal";
+import ShareProjectModal from "../components/collaboration/ShareProjectModal";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
+import useWorkspaceStore from "../store/workspaceStore";
+import collaborationService from "../collaboration/collaborationService";
 
 const Workspace = () => {
   // Activate global keyboard shortcut system (Ctrl+S, Ctrl+O, Ctrl+Enter, Ctrl+Shift+P, Ctrl+Shift+F, Ctrl+Shift+E/X/R/T/D/M)
   useKeyboardShortcuts();
+
+  const [searchParams] = useSearchParams();
+  const params = useParams();
+  const { currentProject } = useWorkspaceStore();
+
+  useEffect(() => {
+    // Auto-connect to collaboration room based on URL params or active project ID
+    const collabParam = searchParams.get("collab") || params.projectId || currentProject?.id || "default-project";
+    collaborationService.connect(collabParam);
+
+    return () => {
+      // Keep connection active unless user explicitly leaves workspace
+    };
+  }, [searchParams, params.projectId, currentProject?.id]);
 
   return (
     <div
@@ -60,6 +79,9 @@ const Workspace = () => {
       <CommentPreviewModal />
       <ReadMePreviewModal />
       <AISettingsModal />
+
+      {/* Sprint 15 Collaboration Modals */}
+      <ShareProjectModal />
     </div>
   );
 };

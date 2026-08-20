@@ -11,6 +11,7 @@ import monacoService from "../../services/monacoService";
 import { parseFileOutline } from "../../services/outlineParser";
 import { registerAIInlineCompletionProvider } from "../../services/aiCompletionProvider";
 import aiService from "../../services/aiService";
+import collaborationService from "../../collaboration/collaborationService";
 import BreadcrumbBar from "../ide/BreadcrumbBar";
 import GitDiffViewer from "../git/GitDiffViewer";
 import AIActionMenu from "../ai/AIActionMenu";
@@ -36,6 +37,11 @@ const EditorPanel = () => {
 
     // Register Monaco AI Inline Completion Provider
     registerAIInlineCompletionProvider(monaco);
+
+    // Bind Yjs CRDT Collaboration Engine to Monaco Editor
+    if (activeFileId) {
+      collaborationService.bindMonacoEditor(editor, monaco, activeFileId);
+    }
 
     // Context Menu AI Actions in Monaco Editor
     editor.addAction({
@@ -98,6 +104,13 @@ const EditorPanel = () => {
       }
     });
   };
+
+  // Dynamically rebind Monaco Yjs collaboration service when active file tab switches
+  useEffect(() => {
+    if (editorRef.current && monacoRef.current && activeFileId) {
+      collaborationService.bindMonacoEditor(editorRef.current, monacoRef.current, activeFileId);
+    }
+  }, [activeFileId]);
 
   // Dynamically switch model language when language state changes
   useEffect(() => {

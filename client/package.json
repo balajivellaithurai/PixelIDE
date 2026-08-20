@@ -20,7 +20,11 @@
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.7.0",
     "react-router-dom": "^7.18.1",
+    "socket.io-client": "^4.8.3",
     "tailwindcss": "^4.3.2",
+    "y-monaco": "^0.1.6",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.32",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
